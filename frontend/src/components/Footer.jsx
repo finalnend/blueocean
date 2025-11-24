@@ -15,18 +15,18 @@ export default function Footer() {
               {t('home.subtitle')}
             </p>
           </div>
-          
+
           {/* Links */}
           <div>
-            <h3 className="text-white font-bold mb-4">{t('nav.resources')}</h3>
+            <h3 className="text-white font-bold mb-4">{t('navbar.resources')}</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/" className="hover:text-white">{t('nav.home')}</Link></li>
-              <li><Link to="/tracker" className="hover:text-white">{t('nav.tracker')}</Link></li>
-              <li><Link to="/simulator" className="hover:text-white">{t('nav.simulator')}</Link></li>
-              <li><Link to="/resources" className="hover:text-white">{t('nav.resources')}</Link></li>
+              <li><Link to="/" className="hover:text-white">{t('navbar.home')}</Link></li>
+              <li><Link to="/tracker" className="hover:text-white">{t('navbar.tracker')}</Link></li>
+              <li><Link to="/simulator" className="hover:text-white">{t('navbar.simulator')}</Link></li>
+              <li><Link to="/resources" className="hover:text-white">{t('navbar.resources')}</Link></li>
             </ul>
           </div>
-          
+
           {/* SDGs */}
           <div>
             <h3 className="text-white font-bold mb-4">SDGs</h3>
@@ -36,7 +36,7 @@ export default function Footer() {
             </div>
           </div>
         </div>
-        
+
         <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm">
           <p>{t('footer.text')}</p>
           <p className="mt-2">

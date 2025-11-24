@@ -161,6 +161,12 @@
       "ngo": "NGO 組織",
       "tool": "工具",
       "teaching": "教學資源"
+    },
+    "app": {
+      "title": "Blue Earth Watch"
+    },
+    "footer": {
+      "text": "© 2024 Blue Earth Watch. 版權所有。"
     }
   }
 }

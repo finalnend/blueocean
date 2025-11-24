@@ -162,5 +162,11 @@
             "tool": "Tool",
             "teaching": "Teaching Material"
         }
+    },
+    "app": {
+        "title": "Blue Earth Watch"
+    },
+    "footer": {
+        "text": "© 2024 Blue Earth Watch. All rights reserved."
     }
 }
