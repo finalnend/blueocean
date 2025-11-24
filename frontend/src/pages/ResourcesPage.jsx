@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getResources, getResourceTypes } from '../services/resourceService';
 
 export default function ResourcesPage() {
+  const { t } = useTranslation();
   const [resources, setResources] = useState([]);
   const [filteredResources, setFilteredResources] = useState([]);
   const [selectedType, setSelectedType] = useState('all');
@@ -59,11 +61,11 @@ export default function ResourcesPage() {
   
   const getTypeName = (type) => {
     const names = {
-      dataset: '資料集',
-      report: '報告',
-      ngo: 'NGO 組織',
-      tool: '工具',
-      teaching: '教學資源',
+      dataset: t('resources.types.dataset'),
+      report: t('resources.types.report'),
+      ngo: t('resources.types.ngo'),
+      tool: t('resources.types.tool'),
+      teaching: t('resources.types.teaching'),
     };
     return names[type] || type;
   };
@@ -71,7 +73,7 @@ export default function ResourcesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        <h1 className="mb-6">教育資源</h1>
+        <h1 className="mb-6">{t('resources.title')}</h1>
         
         {/* 篩選與搜尋 */}
         <div className="card mb-6">
@@ -79,7 +81,7 @@ export default function ResourcesPage() {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="搜尋資源..."
+                placeholder={t('resources.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg"
@@ -91,12 +93,12 @@ export default function ResourcesPage() {
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="px-4 py-2 border rounded-lg"
               >
-                <option value="all">所有類型</option>
-                <option value="dataset">資料集</option>
-                <option value="report">報告</option>
-                <option value="ngo">NGO 組織</option>
-                <option value="tool">工具</option>
-                <option value="teaching">教學資源</option>
+                <option value="all">{t('resources.allTypes')}</option>
+                <option value="dataset">{t('resources.types.dataset')}</option>
+                <option value="report">{t('resources.types.report')}</option>
+                <option value="ngo">{t('resources.types.ngo')}</option>
+                <option value="tool">{t('resources.types.tool')}</option>
+                <option value="teaching">{t('resources.types.teaching')}</option>
               </select>
             </div>
           </div>
@@ -105,7 +107,7 @@ export default function ResourcesPage() {
         {/* 資源列表 */}
         {loading ? (
           <div className="text-center py-20">
-            <p className="text-gray-500">載入中...</p>
+            <p className="text-gray-500">{t('common.loading')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -146,7 +148,7 @@ export default function ResourcesPage() {
                   rel="noopener noreferrer"
                   className="text-ocean-blue-600 font-semibold hover:underline inline-flex items-center"
                 >
-                  查看資源 →
+                  {t('resources.viewResource')} →
                 </a>
               </div>
             ))}
@@ -155,7 +157,7 @@ export default function ResourcesPage() {
         
         {!loading && filteredResources.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-gray-500">找不到相關資源</p>
+            <p className="text-gray-500">{t('resources.noResults')}</p>
           </div>
         )}
       </div>

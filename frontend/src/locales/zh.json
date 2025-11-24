@@ -1,0 +1,166 @@
+{
+  "navbar": {
+    "home": "首頁",
+    "tracker": "污染追蹤",
+    "simulator": "清理遊戲",
+    "resources": "教育資源"
+  },
+  "home": {
+    "subtitle": "追蹤污染、啟發氣候行動的環境教育平台",
+    "exploreMap": "探索污染地圖",
+    "startGame": "開始清理遊戲",
+    "stats": {
+      "avgConcentration": "平均塑膠濃度",
+      "dataPoints": "監測數據點",
+      "maxPollution": "最高污染值"
+    },
+    "features": {
+      "title": "核心功能",
+      "tracker": {
+        "title": "污染追蹤地圖",
+        "desc": "即時互動地圖顯示全球海洋塑膠污染熱點，結合時間序列資料視覺化",
+        "link": "探索地圖"
+      },
+      "simulator": {
+        "title": "虛擬清理遊戲",
+        "desc": "透過遊戲體驗海洋清理挑戰，了解污染問題的嚴重性並學習保護海洋",
+        "link": "開始遊戲"
+      },
+      "resources": {
+        "title": "教育資源",
+        "desc": "科學報告、開放資料集、教學活動指南，以及環保組織行動連結",
+        "link": "瀏覽資源"
+      }
+    },
+    "sdgs": {
+      "title": "對應永續發展目標",
+      "sdg13": {
+        "title": "SDG 13: 氣候行動",
+        "desc": "採取緊急行動應對氣候變遷及其影響，透過資料視覺化提升大眾意識"
+      },
+      "sdg14": {
+        "title": "SDG 14: 保育海洋生態",
+        "desc": "保護和永續利用海洋及海洋資源，減少海洋污染並恢復海洋生態系統"
+      }
+    }
+  },
+  "common": {
+    "loading": "載入中...",
+    "show": "顯示",
+    "hide": "隱藏",
+    "allTypes": "所有類型",
+    "search": "搜尋..."
+  },
+  "tracker": {
+    "title": "污染追蹤",
+    "environmentInfo": "環境資訊",
+    "pollutionType": "污染類型",
+    "region": "區域",
+    "startDate": "開始日期",
+    "endDate": "結束日期",
+    "charts": "圖表",
+    "clearFilter": "清除篩選",
+    "value": "數值",
+    "date": "日期",
+    "howToUse": "如何使用",
+    "mapInstruction": "點擊地圖上的標記查看詳細數據",
+    "types": {
+      "plastic": "塑膠",
+      "microplastic": "微塑膠"
+    },
+    "regions": {
+      "global": "全球",
+      "northPacific": "北太平洋環流",
+      "indianOcean": "印度洋",
+      "northAtlantic": "北大西洋",
+      "mediterranean": "地中海",
+      "southeastAsia": "東南亞"
+    },
+    "legend": {
+      "title": "污染程度圖例",
+      "low": "低",
+      "medium": "中",
+      "high": "高"
+    },
+    "analysis": {
+      "trendTitle": "污染趨勢分析",
+      "trendChartTitle": "{{region}} {{type}}污染趨勢",
+      "latestValue": "最新數值",
+      "averageValue": "平均值",
+      "maxValue": "最高值"
+    }
+  },
+  "simulator": {
+    "title": "海洋清理模擬遊戲",
+    "ready": {
+      "title": "準備開始清理海洋！",
+      "desc1": "使用方向鍵移動清理船，在限時內盡可能收集海洋垃圾。",
+      "desc2": "注意避開海洋生物！",
+      "start": "開始遊戲"
+    },
+    "playing": {
+      "score": "分數",
+      "timeLeft": "剩餘時間",
+      "endGame": "結束遊戲",
+      "instructions": {
+        "title": "操作說明：",
+        "move": "↑↓←→ - 移動清理船",
+        "collect": "靠近垃圾自動收集",
+        "avoid": "避免碰到海洋生物"
+      }
+    },
+    "ended": {
+      "title": "遊戲結束！",
+      "finalScore": "最終分數",
+      "cleanupRate": "清理率",
+      "rankings": {
+        "excellent": "卓越！",
+        "great": "很棒！",
+        "keepTrying": "繼續努力！"
+      },
+      "playAgain": "再玩一次",
+      "submitScore": {
+        "prompt": "請輸入您的暱稱：",
+        "success": "分數已提交！"
+      },
+      "education": {
+        "title": "現實中的海洋污染",
+        "fact1": "每年約有 1100 萬噸塑膠流入海洋",
+        "fact2": "至少 14 億噸塑膠已累積在海洋中",
+        "fact3": "每年有超過 100 萬隻海鳥和海洋哺乳動物因塑膠污染死亡",
+        "fact4": "到 2050 年，海洋中的塑膠可能比魚還多"
+      },
+      "actions": {
+        "title": "你可以這樣做",
+        "reduce": "減少一次性塑膠",
+        "recycle": "回收再利用",
+        "cleanup": "參與淨灘活動",
+        "spread": "傳播環保意識"
+      }
+    },
+    "leaderboard": {
+      "title": "週排行榜",
+      "trivia": {
+        "title": "小知識",
+        "fact1": "每年有 1100 萬噸塑膠流入海洋",
+        "fact2": "至少 14 億噸塑膠已累積在海洋中",
+        "fact3": "海洋生物常誤食塑膠而死亡",
+        "fact4": "我們可以透過減塑行動改變現況"
+      }
+    }
+  },
+  "resources": {
+    "title": "教育資源",
+    "searchPlaceholder": "搜尋資源...",
+    "allTypes": "所有類型",
+    "viewResource": "查看資源",
+    "noResults": "找不到相關資源",
+    "types": {
+      "dataset": "資料集",
+      "report": "報告",
+      "ngo": "NGO 組織",
+      "tool": "工具",
+      "teaching": "教學資源"
+    }
+  }
+}

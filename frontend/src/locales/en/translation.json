@@ -1,0 +1,57 @@
+{
+  "app": {
+    "title": "Blue Earth Watch"
+  },
+  "nav": {
+    "home": "Home",
+    "tracker": "Tracker",
+    "simulator": "Simulator",
+    "resources": "Resources",
+    "login": "Login",
+    "logout": "Logout"
+  },
+  "footer": {
+    "text": "© 2024 Blue Earth Watch. All rights reserved."
+  },
+  "home": {
+    "welcome": "Welcome to Blue Earth Watch",
+    "subtitle": "Monitor, Simulate, and Act for a Better Planet",
+    "features": {
+      "tracker": {
+        "title": "Real-time Tracker",
+        "desc": "Monitor global environmental data in real-time."
+      },
+      "simulator": {
+        "title": "Earth Simulator",
+        "desc": "Simulate the impact of different policies on the environment."
+      },
+      "resources": {
+        "title": "Knowledge Resources",
+        "desc": "Access educational materials and research papers."
+      }
+    }
+  },
+  "tracker": {
+    "title": "Environmental Tracker",
+    "pollution": "Pollution Levels",
+    "temperature": "Global Temperature",
+    "co2": "CO2 Emissions"
+  },
+  "simulator": {
+    "title": "Earth Simulator",
+    "controls": "Simulation Controls",
+    "start": "Start Simulation",
+    "stop": "Stop Simulation",
+    "reset": "Reset"
+  },
+  "resources": {
+    "title": "Educational Resources",
+    "search": "Search resources...",
+    "categories": "Categories"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "learnMore": "Learn More"
+  }
+}

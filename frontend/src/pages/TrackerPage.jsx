@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents } from 'react-leaflet';
+import { useTranslation } from 'react-i18next';
 import { getMapData, getPollutionTypes, getTimeSeries } from '../services/pollutionService';
 import { getLocationEnvironmentData, getCoordinatesFromMapEvent, getTrackerSources } from '../services/trackerService';
 import TimeSeriesChart from '../components/TimeSeriesChart';
@@ -8,6 +9,7 @@ import EnvironmentInfoPanel from '../components/EnvironmentInfoPanel';
 import DataSourcesPanel from '../components/DataSourcesPanel';
 
 export default function TrackerPage() {
+  const { t } = useTranslation();
   const [mapData, setMapData] = useState(null);
   const [selectedType, setSelectedType] = useState('plastic');
   const [selectedRegion, setSelectedRegion] = useState('global');
@@ -111,14 +113,14 @@ export default function TrackerPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
-          <h1>污染追蹤地圖</h1>
+          <h1>{t('tracker.title')}</h1>
           <button
             onClick={() => setShowEnvironmentPanel(!showEnvironmentPanel)}
             className={`btn-outline text-sm ${
               showEnvironmentPanel ? 'bg-ocean-blue-600 text-white' : ''
             }`}
           >
-            {showEnvironmentPanel ? '隱藏' : '顯示'}環境資訊
+            {showEnvironmentPanel ? t('common.hide') : t('common.show')} {t('tracker.environmentInfo')}
           </button>
         </div>
         
@@ -127,37 +129,37 @@ export default function TrackerPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* 污染類型 */}
             <div>
-              <label className="block text-sm font-semibold mb-2">污染類型</label>
-              <select 
+              <label className="block text-sm font-semibold mb-2">{t('tracker.pollutionType')}</label>
+              <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg"
               >
-                <option value="plastic">塑膠污染</option>
-                <option value="microplastic">微塑膠</option>
+                <option value="plastic">{t('tracker.types.plastic')}</option>
+                <option value="microplastic">{t('tracker.types.microplastic')}</option>
               </select>
             </div>
             
             {/* 區域篩選 */}
             <div>
-              <label className="block text-sm font-semibold mb-2">監測區域</label>
-              <select 
+              <label className="block text-sm font-semibold mb-2">{t('tracker.region')}</label>
+              <select
                 value={selectedRegion}
                 onChange={(e) => setSelectedRegion(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg"
               >
-                <option value="global">全球</option>
-                <option value="North Pacific Gyre">北太平洋</option>
-                <option value="Indian Ocean">印度洋</option>
-                <option value="North Atlantic">北大西洋</option>
-                <option value="Mediterranean Sea">地中海</option>
-                <option value="Southeast Asia">東南亞</option>
+                <option value="global">{t('tracker.regions.global')}</option>
+                <option value="North Pacific Gyre">{t('tracker.regions.northPacific')}</option>
+                <option value="Indian Ocean">{t('tracker.regions.indianOcean')}</option>
+                <option value="North Atlantic">{t('tracker.regions.northAtlantic')}</option>
+                <option value="Mediterranean Sea">{t('tracker.regions.mediterranean')}</option>
+                <option value="Southeast Asia">{t('tracker.regions.southeastAsia')}</option>
               </select>
             </div>
             
             {/* 開始日期 */}
             <div>
-              <label className="block text-sm font-semibold mb-2">開始日期</label>
+              <label className="block text-sm font-semibold mb-2">{t('tracker.startDate')}</label>
               <input 
                 type="date"
                 value={dateRange.from}
@@ -168,8 +170,8 @@ export default function TrackerPage() {
             
             {/* 結束日期 */}
             <div>
-              <label className="block text-sm font-semibold mb-2">結束日期</label>
-              <input 
+              <label className="block text-sm font-semibold mb-2">{t('tracker.endDate')}</label>
+              <input
                 type="date"
                 value={dateRange.to}
                 onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
@@ -184,13 +186,13 @@ export default function TrackerPage() {
               onClick={() => setShowCharts(!showCharts)}
               className="btn-outline text-sm"
             >
-              {showCharts ? '隱藏' : '顯示'}圖表分析
+              {showCharts ? t('common.hide') : t('common.show')} {t('tracker.charts')}
             </button>
-            <button 
+            <button
               onClick={() => setDateRange({ from: '', to: '' })}
               className="text-sm text-ocean-blue-600 hover:underline"
             >
-              清除篩選
+              {t('tracker.clearFilter')}
             </button>
           </div>
         </div>
@@ -202,10 +204,10 @@ export default function TrackerPage() {
             <div className="card p-0 overflow-hidden" style={{ height: '600px' }}>
               {loading ? (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-500">載入中...</p>
+                  <p className="text-gray-500">{t('common.loading')}</p>
                 </div>
               ) : (
-                <MapContainer 
+                <MapContainer
                   center={[20, 0]} 
                   zoom={2} 
                   style={{ height: '100%', width: '100%' }}
@@ -230,9 +232,9 @@ export default function TrackerPage() {
                     >
                       <Popup>
                         <div className="text-sm">
-                          <strong>污染值:</strong> {feature.properties.value.toFixed(2)} {feature.properties.unit}<br/>
-                          <strong>區域:</strong> {feature.properties.region || 'N/A'}<br/>
-                          <strong>日期:</strong> {feature.properties.recordedAt}
+                          <strong>{t('tracker.value')}:</strong> {feature.properties.value.toFixed(2)} {feature.properties.unit}<br/>
+                          <strong>{t('tracker.region')}:</strong> {feature.properties.region || 'N/A'}<br/>
+                          <strong>{t('tracker.date')}:</strong> {feature.properties.recordedAt}
                         </div>
                       </Popup>
                     </CircleMarker>
@@ -244,7 +246,7 @@ export default function TrackerPage() {
             {/* 地圖說明 */}
             <div className="mt-4 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-800">
-                💡 <strong>如何使用：</strong>點擊地圖上的任意位置查看當地的空氣品質與海洋環境資料
+                💡 <strong>{t('tracker.howToUse')}：</strong>{t('tracker.mapInstruction')}
               </p>
             </div>
           </div>
@@ -264,19 +266,19 @@ export default function TrackerPage() {
         
         {/* 圖例 */}
         <div className="card mt-6">
-          <h3 className="mb-4">污染程度圖例</h3>
+          <h3 className="mb-4">{t('tracker.legend.title')}</h3>
           <div className="flex gap-6">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-green-500"></div>
-              <span>低 (&lt; 500 kg/km²)</span>
+              <span>{t('tracker.legend.low')} ({'<'} 500 kg/km²)</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-yellow-500"></div>
-              <span>中 (500-1000)</span>
+              <span>{t('tracker.legend.medium')} (500-1000)</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-red-600"></div>
-              <span>高 (&gt; 1000)</span>
+              <span>{t('tracker.legend.high')} ({'>'} 1000)</span>
             </div>
           </div>
         </div>
@@ -286,10 +288,13 @@ export default function TrackerPage() {
           <div className="mt-6 space-y-6">
             {/* 時間序列圖表 */}
             <div className="card">
-              <h3 className="mb-4">📈 污染趨勢分析</h3>
-              <TimeSeriesChart 
+              <h3 className="mb-4">📈 {t('tracker.analysis.trendTitle')}</h3>
+              <TimeSeriesChart
                 data={timeSeriesData}
-                title={`${selectedRegion === 'global' ? '全球' : selectedRegion} ${selectedType === 'plastic' ? '塑膠' : '微塑膠'}污染趨勢`}
+                title={t('tracker.analysis.trendChartTitle', {
+                  region: selectedRegion === 'global' ? t('tracker.regions.global') : selectedRegion,
+                  type: selectedType === 'plastic' ? t('tracker.types.plastic') : t('tracker.types.microplastic')
+                })}
               />
             </div>
             
@@ -300,19 +305,19 @@ export default function TrackerPage() {
                   <div className="text-2xl font-bold text-ocean-blue-600">
                     {timeSeriesData[timeSeriesData.length - 1].value.toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-600">最新數值 (kg/km²)</div>
+                  <div className="text-sm text-gray-600">{t('tracker.analysis.latestValue')} (kg/km²)</div>
                 </div>
                 <div className="card text-center">
                   <div className="text-2xl font-bold text-orange-600">
                     {(timeSeriesData.reduce((sum, d) => sum + d.value, 0) / timeSeriesData.length).toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-600">平均值</div>
+                  <div className="text-sm text-gray-600">{t('tracker.analysis.averageValue')}</div>
                 </div>
                 <div className="card text-center">
                   <div className="text-2xl font-bold text-red-600">
                     {Math.max(...timeSeriesData.map(d => d.value)).toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-600">最高值</div>
+                  <div className="text-sm text-gray-600">{t('tracker.analysis.maxValue')}</div>
                 </div>
               </div>
             )}

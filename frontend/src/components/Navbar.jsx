@@ -1,19 +1,22 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
 
 export default function Navbar() {
   const location = useLocation();
-  
+  const { t } = useTranslation();
+
   const navItems = [
-    { path: '/', label: '首頁' },
-    { path: '/tracker', label: '污染追蹤' },
-    { path: '/simulator', label: '清理遊戲' },
-    { path: '/resources', label: '教育資源' },
+    { path: '/', label: t('navbar.home') },
+    { path: '/tracker', label: t('navbar.tracker') },
+    { path: '/simulator', label: t('navbar.simulator') },
+    { path: '/resources', label: t('navbar.resources') },
   ];
-  
+
   const isActive = (path) => {
     return location.pathname === path;
   };
-  
+
   return (
     <nav className="bg-ocean-blue-700 text-white shadow-lg">
       <div className="container mx-auto px-4">
@@ -25,30 +28,35 @@ export default function Navbar() {
             </div>
             <span className="text-xl font-bold">Blue Earth Watch</span>
           </Link>
-          
+
           {/* Navigation Links */}
-          <div className="hidden md:flex space-x-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`px-4 py-2 rounded-lg transition-colors duration-200 ${
-                  isActive(item.path)
+          <div className="hidden md:flex items-center space-x-4">
+            <div className="flex space-x-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`px-4 py-2 rounded-lg transition-colors duration-200 ${isActive(item.path)
                     ? 'bg-ocean-blue-600 font-semibold'
                     : 'hover:bg-ocean-blue-600'
-                }`}
-              >
-                {item.label}
-              </Link>
-            ))}
+                    }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+            <LanguageSwitcher />
           </div>
-          
+
           {/* Mobile Menu Button */}
-          <button className="md:hidden p-2">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+          <div className="md:hidden flex items-center space-x-4">
+            <LanguageSwitcher />
+            <button className="p-2">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </nav>

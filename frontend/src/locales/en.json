@@ -1,0 +1,166 @@
+{
+    "navbar": {
+        "home": "Home",
+        "tracker": "Pollution Tracker",
+        "simulator": "Cleanup Game",
+        "resources": "Resources"
+    },
+    "home": {
+        "subtitle": "An environmental education platform to track pollution and inspire climate action",
+        "exploreMap": "Explore Map",
+        "startGame": "Start Game",
+        "stats": {
+            "avgConcentration": "Avg Plastic Conc.",
+            "dataPoints": "Data Points",
+            "maxPollution": "Max Pollution"
+        },
+        "features": {
+            "title": "Core Features",
+            "tracker": {
+                "title": "Pollution Tracker Map",
+                "desc": "Real-time interactive map showing global marine plastic pollution hotspots with time-series data visualization",
+                "link": "Explore Map"
+            },
+            "simulator": {
+                "title": "Virtual Cleanup Game",
+                "desc": "Experience marine cleanup challenges through games, understand the severity of pollution, and learn to protect the ocean",
+                "link": "Start Game"
+            },
+            "resources": {
+                "title": "Educational Resources",
+                "desc": "Scientific reports, open datasets, teaching guides, and links to environmental organizations",
+                "link": "Browse Resources"
+            }
+        },
+        "sdgs": {
+            "title": "Sustainable Development Goals",
+            "sdg13": {
+                "title": "SDG 13: Climate Action",
+                "desc": "Take urgent action to combat climate change and its impacts, raising awareness through data visualization"
+            },
+            "sdg14": {
+                "title": "SDG 14: Life Below Water",
+                "desc": "Conserve and sustainably use the oceans, seas and marine resources, reducing marine pollution and restoring marine ecosystems"
+            }
+        }
+    },
+    "common": {
+        "loading": "Loading...",
+        "show": "Show",
+        "hide": "Hide",
+        "allTypes": "All Types",
+        "search": "Search..."
+    },
+    "tracker": {
+        "title": "Pollution Tracker",
+        "environmentInfo": "Environment Info",
+        "pollutionType": "Pollution Type",
+        "region": "Region",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "charts": "Charts",
+        "clearFilter": "Clear Filter",
+        "value": "Value",
+        "date": "Date",
+        "howToUse": "How to Use",
+        "mapInstruction": "Click on map markers to view detailed data",
+        "types": {
+            "plastic": "Plastic",
+            "microplastic": "Microplastic"
+        },
+        "regions": {
+            "global": "Global",
+            "northPacific": "North Pacific Gyre",
+            "indianOcean": "Indian Ocean",
+            "northAtlantic": "North Atlantic",
+            "mediterranean": "Mediterranean Sea",
+            "southeastAsia": "Southeast Asia"
+        },
+        "legend": {
+            "title": "Pollution Levels",
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High"
+        },
+        "analysis": {
+            "trendTitle": "Pollution Trend Analysis",
+            "trendChartTitle": "{{region}} {{type}} Pollution Trend",
+            "latestValue": "Latest Value",
+            "averageValue": "Average Value",
+            "maxValue": "Max Value"
+        }
+    },
+    "simulator": {
+        "title": "Marine Cleanup Simulator",
+        "ready": {
+            "title": "Ready to Clean the Ocean!",
+            "desc1": "Use arrow keys to move the cleanup boat and collect marine debris within the time limit.",
+            "desc2": "Watch out for marine life!",
+            "start": "Start Game"
+        },
+        "playing": {
+            "score": "Score",
+            "timeLeft": "Time Left",
+            "endGame": "End Game",
+            "instructions": {
+                "title": "Controls:",
+                "move": "↑↓←→ - Move Boat",
+                "collect": "Auto-collect near debris",
+                "avoid": "Avoid marine life"
+            }
+        },
+        "ended": {
+            "title": "Game Over!",
+            "finalScore": "Final Score",
+            "cleanupRate": "Cleanup Rate",
+            "rankings": {
+                "excellent": "Excellent!",
+                "great": "Great Job!",
+                "keepTrying": "Keep Trying!"
+            },
+            "playAgain": "Play Again",
+            "submitScore": {
+                "prompt": "Enter your nickname:",
+                "success": "Score submitted!"
+            },
+            "education": {
+                "title": "Ocean Pollution Reality",
+                "fact1": "11 million tons of plastic enter the ocean annually",
+                "fact2": "At least 1.4 billion tons of plastic have accumulated in the ocean",
+                "fact3": "Over 1 million seabirds and marine mammals die from plastic pollution annually",
+                "fact4": "By 2050, there could be more plastic than fish in the ocean"
+            },
+            "actions": {
+                "title": "What You Can Do",
+                "reduce": "Reduce Single-use Plastics",
+                "recycle": "Recycle & Reuse",
+                "cleanup": "Join Beach Cleanups",
+                "spread": "Spread Awareness"
+            }
+        },
+        "leaderboard": {
+            "title": "Weekly Leaderboard",
+            "trivia": {
+                "title": "Did You Know?",
+                "fact1": "11 million tons of plastic enter the ocean annually",
+                "fact2": "At least 1.4 billion tons of plastic have accumulated in the ocean",
+                "fact3": "Marine life often die from ingesting plastic",
+                "fact4": "We can change this through plastic reduction actions"
+            }
+        }
+    },
+    "resources": {
+        "title": "Educational Resources",
+        "searchPlaceholder": "Search resources...",
+        "allTypes": "All Types",
+        "viewResource": "View Resource",
+        "noResults": "No resources found",
+        "types": {
+            "dataset": "Dataset",
+            "report": "Report",
+            "ngo": "NGO",
+            "tool": "Tool",
+            "teaching": "Teaching Material"
+        }
+    }
+}
