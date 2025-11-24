@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { pathToFileURL } from 'url';
 import { importOWIDDataToDatabase } from '../services/owidDataParser.js';
 import { importExternalDataToDatabase, scheduleCleanup } from '../services/externalDataService.js';
+import { syncNoaaMicroplastics } from './importMicroplasticsFromNoaa.js';
 
 export function scheduleDailyDataSync() {
   console.log('Scheduling daily data sync at 02:00 UTC...');
@@ -14,7 +15,11 @@ export function scheduleDailyDataSync() {
       console.log(`[SYNC] OWID rows refreshed: ${owidCount}`);
 
       await importExternalDataToDatabase();
-      console.log('[SYNC] External data refresh complete\n');
+      console.log('[SYNC] External data refresh complete');
+
+      // NOAA 全球微塑膠資料每日同步一次
+      await syncNoaaMicroplastics('global');
+      console.log('[SYNC] NOAA microplastics (global) refreshed\n');
     } catch (error) {
       console.error('[SYNC] Daily sync failed:', error);
     }
@@ -39,6 +44,9 @@ export async function manualSync() {
     console.log(`[SYNC] OWID rows refreshed: ${owidCount}`);
 
     await importExternalDataToDatabase();
+
+    await syncNoaaMicroplastics('global');
+    console.log('[SYNC] NOAA microplastics (global) refreshed');
 
     console.log('[SYNC] Manual sync complete\n');
     return true;

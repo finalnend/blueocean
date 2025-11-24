@@ -10,6 +10,9 @@
     "init-db": "node src/database/init.js",
     "seed": "node src/database/seed.js",
     "sync": "node src/scripts/syncData.js",
+    "import-gpw-manual": "node src/scripts/importGpwManual.js",
+    "import-microplastics-noaa": "node src/scripts/importMicroplasticsFromNoaa.js",
+    "clear-seed": "node src/scripts/clearSeedData.js",
     "test": "jest --coverage"
   },
   "keywords": [
