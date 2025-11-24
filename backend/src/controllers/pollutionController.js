@@ -2,11 +2,11 @@ import getDatabase from '../database/db.js';
 
 const db = getDatabase();
 
-// 取得污染摘要
+// 污染摘要
 export const getPollutionSummary = (req, res) => {
   try {
     const { region = 'global', type = 'plastic', year } = req.query;
-    
+
     let query = `
       SELECT 
         type,
@@ -19,35 +19,35 @@ export const getPollutionSummary = (req, res) => {
       FROM pollution_data
       WHERE type = ?
     `;
-    
+
     const params = [type];
-    
+
     if (year) {
       query += ` AND strftime('%Y', recorded_at) = ?`;
       params.push(year);
     }
-    
+
     if (region !== 'global') {
       query += ` AND json_extract(meta, '$.region') LIKE ?`;
       params.push(`%${region}%`);
     }
-    
+
     query += ` GROUP BY type, unit, source`;
-    
+
     const stmt = db.prepare(query);
     const result = stmt.get(...params);
-    
+
     if (!result) {
       return res.json({
         region,
         type,
         year: year || 'latest',
-        message: '目前無資料',
+        message: '暫無資料',
         value: 0,
         unit: 'kg/km²'
       });
     }
-    
+
     res.json({
       region,
       type,
@@ -65,45 +65,61 @@ export const getPollutionSummary = (req, res) => {
   }
 };
 
-// 取得地圖資料點
+// 地圖資料
 export const getMapData = (req, res) => {
   try {
     const { type = 'plastic', from, to, bbox } = req.query;
-    
+
     let query = `
       SELECT id, lat, lng, value, unit, recorded_at, meta
       FROM pollution_data
       WHERE type = ?
     `;
-    
+
     const params = [type];
-    
+
     if (from && to) {
       query += ` AND recorded_at BETWEEN ? AND ?`;
       params.push(from, to);
     }
-    
-    // bbox 格式: "minLat,minLng,maxLat,maxLng"
+
+    // bbox format: "minLat,minLng,maxLat,maxLng"
     if (bbox) {
       const [minLat, minLng, maxLat, maxLng] = bbox.split(',').map(Number);
       query += ` AND lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?`;
       params.push(minLat, maxLat, minLng, maxLng);
     }
-    
-    query += ` LIMIT 1000`; // 限制回傳數量
-    
+
+    query += ` LIMIT 1000`; // limit response payload
+
     const stmt = db.prepare(query);
     const data = stmt.all(...params);
-    
-    // 解析 meta JSON
-    const formattedData = data.map(row => ({
-      ...row,
-      meta: row.meta ? JSON.parse(row.meta) : {}
-    }));
-    
+
+    // Parse meta and derive region fallback for datasets without region field
+    const formattedData = data.map((row) => {
+      const meta = row.meta ? JSON.parse(row.meta) : {};
+      const derivedRegion =
+        meta.region ||
+        meta.country ||
+        meta.ocean ||
+        meta.regionName ||
+        meta.subregion ||
+        meta.state ||
+        meta.beachLocation ||
+        null;
+
+      return {
+        ...row,
+        meta: {
+          ...meta,
+          region: derivedRegion || 'N/A'
+        }
+      };
+    });
+
     res.json({
       type: 'FeatureCollection',
-      features: formattedData.map(point => ({
+      features: formattedData.map((point) => ({
         type: 'Feature',
         geometry: {
           type: 'Point',
@@ -124,11 +140,11 @@ export const getMapData = (req, res) => {
   }
 };
 
-// 取得時間序列資料
+// 時序資料
 export const getTimeSeries = (req, res) => {
   try {
     const { type = 'plastic', region, lat, lng, radius = 5 } = req.query;
-    
+
     let query = `
       SELECT 
         strftime('%Y-%m', recorded_at) as month,
@@ -137,14 +153,14 @@ export const getTimeSeries = (req, res) => {
       FROM pollution_data
       WHERE type = ?
     `;
-    
+
     const params = [type];
-    
+
     if (region) {
       query += ` AND json_extract(meta, '$.region') LIKE ?`;
       params.push(`%${region}%`);
     } else if (lat && lng) {
-      // 簡化的距離計算（僅適用於小範圍）
+      // Simple bounding-box filter as a rough spatial query
       query += ` AND (
         (lat BETWEEN ? AND ?) AND
         (lng BETWEEN ? AND ?)
@@ -159,16 +175,16 @@ export const getTimeSeries = (req, res) => {
         lngNum + radiusNum
       );
     }
-    
+
     query += ` GROUP BY month ORDER BY month`;
-    
+
     const stmt = db.prepare(query);
     const data = stmt.all(...params);
-    
+
     res.json({
       type,
       region: region || 'custom',
-      data: data.map(row => ({
+      data: data.map((row) => ({
         date: row.month,
         value: row.avg_value,
         count: row.count
@@ -176,11 +192,11 @@ export const getTimeSeries = (req, res) => {
     });
   } catch (error) {
     console.error('Error in getTimeSeries:', error);
-    res.status(500).json({ error: '取得時間序列資料失敗' });
+    res.status(500).json({ error: '取得時序資料失敗' });
   }
 };
 
-// 取得污染類型列表
+// 污染類型列表
 export const getPollutionTypes = (req, res) => {
   try {
     const stmt = db.prepare(`
@@ -189,7 +205,7 @@ export const getPollutionTypes = (req, res) => {
       ORDER BY type
     `);
     const types = stmt.all();
-    
+
     res.json({ types });
   } catch (error) {
     console.error('Error in getPollutionTypes:', error);

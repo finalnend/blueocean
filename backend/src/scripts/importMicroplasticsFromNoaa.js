@@ -7,6 +7,12 @@ const FEATURE_SERVICE_URL =
   process.env.NOAA_MICROPLASTICS_URL ||
   'https://services2.arcgis.com/C8EMgrsFcRFL6LrL/arcgis/rest/services/Marine_Microplastics_WGS84/FeatureServer/0/query';
 
+const CACHE_KEY_PREFIX = 'noaa_microplastics_meta';
+const STALE_WINDOW_HOURS =
+  Number(process.env.NOAA_MICROPLASTICS_STALE_HOURS) || 12; // default: refresh check every 12h
+const CACHE_TTL_HOURS =
+  Number(process.env.NOAA_MICROPLASTICS_CACHE_TTL_HOURS) || 24 * 14; // keep ETag meta for 14 days
+
 // 預設幾個區域（lon/lat，WGS84）
 // 可依需要調整或新增
 const REGIONS = {
@@ -38,6 +44,89 @@ function buildDate(dateStr) {
 
   const pad = (n) => String(n).padStart(2, '0');
   return `${y}-${pad(m)}-${pad(d)}`;
+}
+
+function getSyncMeta(regionKey) {
+  const db = getDatabase();
+  const cacheKey = `${CACHE_KEY_PREFIX}:${regionKey}`;
+  const row = db
+    .prepare(
+      `
+      SELECT cache_data
+      FROM data_cache
+      WHERE cache_key = ? AND expires_at > datetime('now')
+    `
+    )
+    .get(cacheKey);
+
+  if (!row?.cache_data) return null;
+
+  try {
+    return JSON.parse(row.cache_data);
+  } catch (error) {
+    console.warn(`[NOAA] Failed to parse cache for ${regionKey}:`, error.message);
+    return null;
+  }
+}
+
+function saveSyncMeta(regionKey, meta) {
+  const db = getDatabase();
+  const cacheKey = `${CACHE_KEY_PREFIX}:${regionKey}`;
+
+  db.prepare(
+    `
+    INSERT OR REPLACE INTO data_cache (cache_key, cache_data, expires_at)
+    VALUES (?, ?, datetime('now', '+' || ? || ' hours'))
+  `
+  ).run(cacheKey, JSON.stringify(meta), CACHE_TTL_HOURS);
+}
+
+function isRecentlyChecked(meta) {
+  const latestTs = meta?.lastCheckedAt || meta?.lastSyncedAt;
+  if (!latestTs) return false;
+
+  const lastChecked = new Date(latestTs).getTime();
+  if (Number.isNaN(lastChecked)) return false;
+
+  const msSince = Date.now() - lastChecked;
+  return msSince < STALE_WINDOW_HOURS * 60 * 60 * 1000;
+}
+
+async function checkRemoteEtag(regionKey, bbox, cachedEtag) {
+  const paramsBase = {
+    f: 'json',
+    where: '1=1',
+    outFields: 'OBJECTID',
+    outSR: 4326,
+    resultOffset: 0,
+    resultRecordCount: 1,
+    returnGeometry: false
+  };
+
+  if (bbox && bbox.length === 4) {
+    const [xmin, ymin, xmax, ymax] = bbox;
+    paramsBase.geometry = `${xmin},${ymin},${xmax},${ymax}`;
+    paramsBase.geometryType = 'esriGeometryEnvelope';
+    paramsBase.inSR = 4326;
+    paramsBase.spatialRel = 'esriSpatialRelIntersects';
+  }
+
+  const headers = cachedEtag ? { 'If-None-Match': cachedEtag } : undefined;
+
+  try {
+    const res = await axios.get(FEATURE_SERVICE_URL, {
+      params: paramsBase,
+      headers,
+      // 304 means ETag not changed; treat as success
+      validateStatus: (status) => status === 200 || status === 304
+    });
+
+    const remoteEtag = res.headers?.etag;
+    return { status: res.status, etag: remoteEtag || cachedEtag };
+  } catch (error) {
+    console.warn(`[NOAA] 無法取得 ETag (${regionKey}): ${error.message}`);
+    return { status: 200, etag: cachedEtag };
+  }
 }
 
 async function fetchRegionFeatures(regionKey, bbox) {
@@ -187,9 +276,42 @@ async function runForRegion(regionKey) {
     return;
   }
 
+  const meta = getSyncMeta(regionKey);
+
+  if (isRecentlyChecked(meta)) {
+    console.log(
+      `[NOAA] ${regionKey} microplastics 已在 ${meta?.lastCheckedAt || meta?.lastSyncedAt
+      } 檢查過（窗口 ${STALE_WINDOW_HOURS}h），略過此次同步。`
+    );
+    return;
+  }
+
+  const nowIso = new Date().toISOString();
+  const { status: etagStatus, etag } = await checkRemoteEtag(
+    regionKey,
+    region.bbox,
+    meta?.etag
+  );
+
+  if (etagStatus === 304) {
+    console.log(`[NOAA] ${regionKey} ETag 未變更，跳過資料匯入。`);
+    saveSyncMeta(regionKey, {
+      etag,
+      lastCheckedAt: nowIso,
+      lastSyncedAt: meta?.lastSyncedAt || meta?.lastCheckedAt || nowIso
+    });
+    return;
+  }
+
   try {
     const features = await fetchRegionFeatures(regionKey, region.bbox);
     importRegionToDb(regionKey, features);
+
+    saveSyncMeta(regionKey, {
+      etag,
+      lastCheckedAt: nowIso,
+      lastSyncedAt: nowIso
+    });
   } catch (error) {
     console.error(`❌ 區域 ${regionKey} 匯入失敗:`, error.message);
     process.exitCode = 1;
