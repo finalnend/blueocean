@@ -1,0 +1,119 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+import { startAllSchedules } from './scripts/syncData.js';
+
+// 載入路由
+import pollutionRoutes from './routes/pollution.js';
+import gameRoutes from './routes/game.js';
+import resourceRoutes from './routes/resources.js';
+import authRoutes from './routes/auth.js';
+import trackerRoutes from './routes/tracker.js';
+
+// 載入環境變數
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// 安全性中介層
+app.use(helmet());
+
+// CORS 設定
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true
+}));
+
+// 壓縮回應
+app.use(compression());
+
+// 解析 JSON
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting - 防止 API 濫用
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 分鐘
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // 限制 100 次請求
+  message: '請求過於頻繁，請稍後再試'
+});
+
+app.use('/api/', limiter);
+
+// 健康檢查端點
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// API 路由
+app.use('/api/pollution', pollutionRoutes);
+app.use('/api/game', gameRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/tracker', trackerRoutes);
+
+// 根路徑
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Blue Earth Watch API',
+    version: '1.0.0',
+    endpoints: {
+      pollution: '/api/pollution',
+      game: '/api/game',
+      resources: '/api/resources',
+      tracker: '/api/tracker',
+      health: '/health'
+    },
+    documentation: 'https://github.com/your-username/blue-earth-watch'
+  });
+});
+
+// 404 處理
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: '找不到該端點',
+    path: req.path 
+  });
+});
+
+// 錯誤處理中介層
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  
+  const status = err.status || 500;
+  const message = err.message || '伺服器內部錯誤';
+  
+  res.status(status).json({
+    error: message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+
+// 啟動伺服器
+app.listen(PORT, () => {
+  console.log(`
+╔═══════════════════════════════════════════╗
+║   Blue Earth Watch API Server 🌍          ║
+║                                           ║
+║   Port: ${PORT}                             ║
+║   Environment: ${process.env.NODE_ENV || 'development'}              ║
+║                                           ║
+║   API Base: http://localhost:${PORT}/api    ║
+╚═══════════════════════════════════════════╝
+  `);
+  
+  // 啟動資料同步排程
+  if (process.env.NODE_ENV !== 'test') {
+    startAllSchedules();
+  }
+});
+
+export default app;
