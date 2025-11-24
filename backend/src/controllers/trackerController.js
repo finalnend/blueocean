@@ -6,6 +6,44 @@ import {
 } from '../services/trackerApiService.js';
 
 /**
+ * 資料來源清單
+ * GET /api/tracker/sources
+ */
+export function getTrackerSources(req, res) {
+  const sources = [
+    {
+      name: 'Our World in Data',
+      type: '塑膠廢棄物 (全球)',
+      status: 'available',
+      auth: '不需授權',
+      endpoint: 'https://ourworldindata.org/grapher/plastic-waste-generation-total.csv',
+      notes: '已內建定時同步，資料來源開放且免金鑰'
+    },
+    {
+      name: 'Global Plastic Watch',
+      type: '塑膠熱點 (bbox)',
+      status: process.env.GPW_API_TOKEN ? 'available' : 'requires_key',
+      auth: process.env.GPW_API_TOKEN ? '已設定 GPW_API_TOKEN' : '需申請 Token',
+      endpoint: 'https://api.globalplasticwatch.org/plastic-sites?bbox=...&min_area=...',
+      notes: '官方需帳號/Token；未設定金鑰時前端標示為待啟用'
+    },
+    {
+      name: 'Copernicus Marine Service (CMEMS)',
+      type: '海況（SST/洋流/氯葉素）',
+      status: process.env.COPERNICUS_API_KEY ? 'available' : 'requires_key',
+      auth: process.env.COPERNICUS_API_KEY ? '已設定 COPERNICUS_API_KEY' : '需註冊並生成機器 Token',
+      endpoint: 'WMS/OGC / motuclient',
+      notes: '適合後續漂移/海況分析；需免費註冊後取得 API Key'
+    }
+  ];
+
+  res.json({
+    success: true,
+    sources
+  });
+}
+
+/**
  * 空氣品質查詢
  * GET /api/tracker/air-quality?lat=25.0&lng=121.5&radius=10000&parameter=pm25
  */

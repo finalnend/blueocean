@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents } from 'react-leaflet';
 import { getMapData, getPollutionTypes, getTimeSeries } from '../services/pollutionService';
-import { getLocationEnvironmentData, getCoordinatesFromMapEvent } from '../services/trackerService';
+import { getLocationEnvironmentData, getCoordinatesFromMapEvent, getTrackerSources } from '../services/trackerService';
 import TimeSeriesChart from '../components/TimeSeriesChart';
 import PollutionPieChart from '../components/PollutionPieChart';
 import EnvironmentInfoPanel from '../components/EnvironmentInfoPanel';
+import DataSourcesPanel from '../components/DataSourcesPanel';
 
 export default function TrackerPage() {
   const [mapData, setMapData] = useState(null);
@@ -19,11 +20,29 @@ export default function TrackerPage() {
   const [environmentData, setEnvironmentData] = useState(null);
   const [envLoading, setEnvLoading] = useState(false);
   const [showEnvironmentPanel, setShowEnvironmentPanel] = useState(false);
+  const [dataSources, setDataSources] = useState([]);
+  const [sourcesLoading, setSourcesLoading] = useState(false);
   
   useEffect(() => {
     loadMapData();
     loadTimeSeriesData();
   }, [selectedType, selectedRegion, dateRange]);
+
+  useEffect(() => {
+    const loadSources = async () => {
+      try {
+        setSourcesLoading(true);
+        const result = await getTrackerSources();
+        setDataSources(result.sources || []);
+      } catch (error) {
+        console.error('載入資料來源失敗:', error);
+        setDataSources([]);
+      } finally {
+        setSourcesLoading(false);
+      }
+    };
+    loadSources();
+  }, []);
   
   const loadMapData = async () => {
     try {
@@ -299,6 +318,10 @@ export default function TrackerPage() {
             )}
           </div>
         )}
+
+        <div className="mt-6">
+          <DataSourcesPanel sources={dataSources} loading={sourcesLoading} />
+        </div>
       </div>
     </div>
   );

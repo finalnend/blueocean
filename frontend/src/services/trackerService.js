@@ -232,3 +232,16 @@ export function getCoordinatesFromMapEvent(event) {
     lng: event.latlng.lng
   };
 }
+
+/**
+ * 取得外部資料來源狀態
+ */
+export async function getTrackerSources() {
+  try {
+    const response = await api.get(`${TRACKER_BASE}/sources`);
+    return response;
+  } catch (error) {
+    console.error('getTrackerSources error:', error);
+    return { success: false, sources: [] };
+  }
+}

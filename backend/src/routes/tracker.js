@@ -5,7 +5,8 @@ import {
   getMarineWeather,
   getPlasticSites,
   getCleanupEvents,
-  getSSTGrid
+  getSSTGrid,
+  getTrackerSources
 } from '../controllers/trackerController.js';
 
 const router = express.Router();
@@ -51,5 +52,8 @@ router.get('/plastic-sites', getPlasticSites);
 
 // 淨灘活動
 router.get('/cleanups', getCleanupEvents);
+
+// 資料來源狀態
+router.get('/sources', getTrackerSources);
 
 export default router;
