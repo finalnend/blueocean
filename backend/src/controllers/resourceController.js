@@ -2,6 +2,13 @@ import getDatabase from '../database/db.js';
 
 const db = getDatabase();
 
+function isValidExternalUrl(url) {
+  if (typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed === '#') return false;
+  return /^https?:\/\//i.test(trimmed);
+}
+
 // 取得資源列表
 export const getResources = (req, res) => {
   try {
@@ -42,10 +49,16 @@ export const getResources = (req, res) => {
     const resources = stmt.all(...params);
     
     // 解析 tags
-    const formattedResources = resources.map(resource => ({
-      ...resource,
-      tags: resource.tags ? resource.tags.split(',') : []
-    }));
+    const formattedResources = resources
+      .map((resource) => ({
+        ...resource,
+        url: typeof resource.url === 'string' ? resource.url.trim() : resource.url,
+      }))
+      .filter((resource) => isValidExternalUrl(resource.url))
+      .map((resource) => ({
+        ...resource,
+        tags: resource.tags ? resource.tags.split(',') : [],
+      }));
     
     res.json({
       count: formattedResources.length,
@@ -142,6 +155,11 @@ export const addResource = (req, res) => {
       return res.status(400).json({ error: '缺少必要欄位' });
     }
     
+    const normalizedUrl = typeof url === 'string' ? url.trim() : '';
+    if (!isValidExternalUrl(normalizedUrl)) {
+      return res.status(400).json({ error: 'Invalid resource URL' });
+    }
+    
     const stmt = db.prepare(`
       INSERT INTO resource_links (title, url, type, tags, language, description, added_by)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -151,7 +169,7 @@ export const addResource = (req, res) => {
     
     const result = stmt.run(
       title,
-      url,
+      normalizedUrl,
       type,
       tagsString,
       language || 'en',

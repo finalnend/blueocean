@@ -38,26 +38,26 @@ export default function HomePage() {
 
       {/* Global Stats */}
       {globalStats && (
-        <section className="py-12 bg-white">
+        <section className="py-12 bg-white dark:bg-gray-900">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="card text-center">
                 <div className="text-4xl mb-2">🌊</div>
-                <h3 className="text-gray-600 mb-2">{t('home.stats.avgConcentration')}</h3>
+                <h3 className="text-gray-600 dark:text-gray-300 mb-2">{t('home.stats.avgConcentration')}</h3>
                 <p className="text-3xl font-bold text-ocean-blue-600">
                   {globalStats.average?.toFixed(1)} {globalStats.unit}
                 </p>
               </div>
               <div className="card text-center">
                 <div className="text-4xl mb-2">📊</div>
-                <h3 className="text-gray-600 mb-2">{t('home.stats.dataPoints')}</h3>
+                <h3 className="text-gray-600 dark:text-gray-300 mb-2">{t('home.stats.dataPoints')}</h3>
                 <p className="text-3xl font-bold text-ocean-blue-600">
                   {globalStats.dataPoints}
                 </p>
               </div>
               <div className="card text-center">
                 <div className="text-4xl mb-2">📍</div>
-                <h3 className="text-gray-600 mb-2">{t('home.stats.maxPollution')}</h3>
+                <h3 className="text-gray-600 dark:text-gray-300 mb-2">{t('home.stats.maxPollution')}</h3>
                 <p className="text-3xl font-bold text-red-600">
                   {globalStats.max?.toFixed(1)} {globalStats.unit}
                 </p>
@@ -68,7 +68,7 @@ export default function HomePage() {
       )}
 
       {/* Features */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4">
           <h2 className="text-center mb-12">{t('home.features.title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -76,7 +76,7 @@ export default function HomePage() {
             <div className="card">
               <div className="text-5xl mb-4">🗺️</div>
               <h3 className="mb-3">{t('home.features.tracker.title')}</h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
                 {t('home.features.tracker.desc')}
               </p>
               <Link to="/tracker" className="text-ocean-blue-600 font-semibold hover:underline">
@@ -88,7 +88,7 @@ export default function HomePage() {
             <div className="card">
               <div className="text-5xl mb-4">🎮</div>
               <h3 className="mb-3">{t('home.features.simulator.title')}</h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
                 {t('home.features.simulator.desc')}
               </p>
               <Link to="/simulator" className="text-ocean-blue-600 font-semibold hover:underline">
@@ -100,7 +100,7 @@ export default function HomePage() {
             <div className="card">
               <div className="text-5xl mb-4">📚</div>
               <h3 className="mb-3">{t('home.features.resources.title')}</h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
                 {t('home.features.resources.desc')}
               </p>
               <Link to="/resources" className="text-ocean-blue-600 font-semibold hover:underline">
@@ -112,7 +112,7 @@ export default function HomePage() {
       </section>
 
       {/* SDGs Section */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-white dark:bg-gray-900">
         <div className="container mx-auto px-4">
           <h2 className="text-center mb-12">{t('home.sdgs.title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -120,7 +120,7 @@ export default function HomePage() {
               <div className="text-5xl mr-4">🎯</div>
               <div>
                 <h3 className="mb-2">{t('home.sdgs.sdg13.title')}</h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-300">
                   {t('home.sdgs.sdg13.desc')}
                 </p>
               </div>
@@ -129,7 +129,7 @@ export default function HomePage() {
               <div className="text-5xl mr-4">🌊</div>
               <div>
                 <h3 className="mb-2">{t('home.sdgs.sdg14.title')}</h3>
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-300">
                   {t('home.sdgs.sdg14.desc')}
                 </p>
               </div>

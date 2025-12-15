@@ -92,10 +92,57 @@
     },
     "simulator": {
         "title": "Marine Cleanup Simulator",
+        "nickname": {
+            "label": "Nickname",
+            "placeholder": "Enter a nickname",
+            "prompt": "Enter your name for the leaderboard:"
+        },
+        "modes": {
+            "collision": "AI collision (bounce)",
+            "edgeLeave": "AI can leave edges"
+        },
+        "difficulty": {
+            "label": "Bot difficulty",
+            "mixed": "Mixed (E/N/H)",
+            "easy": "Easy",
+            "normal": "Normal",
+            "hard": "Hard",
+            "hintMixed": "Initial bots = {{count}}. Respawns keep the same ratio over time."
+        },
+        "bots": {
+            "countLabel": "Initial bot count",
+            "countHint": "Higher counts are harder but give more targets to farm."
+        },
+        "speed": {
+            "label": "Game speed",
+            "hint": "Affects movement and timer. You can adjust mid-game."
+        },
+        "lessons": {
+            "title": "Lessons & Tips",
+            "nextTitle": "What to improve next run"
+        },
+        "submit": {
+            "submitting": "Saving score...",
+            "submitted": "Saved to leaderboard.",
+            "error": "Save failed:",
+            "retry": "Retry saving score"
+        },
+        "sidebar": {
+            "leaderboardTitle": "Global Leaderboard",
+            "controlsTitle": "Controls",
+            "controls": {
+                "move": "Mouse: move",
+                "split": "Space: split into cells (requires mass)",
+                "boost": "Shift (hold): speed boost (drains mass)",
+                "merge": "Cells can merge again after a short delay when touching",
+                "goal": "Eat trash and smaller bots; avoid bigger ones"
+            }
+        },
         "ready": {
             "title": "Ready to Clean the Ocean!",
             "desc1": "Use arrow keys to move the cleanup boat and collect marine debris within the time limit.",
             "desc2": "Watch out for marine life!",
+            "advancedControls": "Tip: Space = split, Shift = boost.",
             "start": "Start Game"
         },
         "playing": {

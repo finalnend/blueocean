@@ -11,7 +11,7 @@ export default function DataSourcesPanel({ sources = [], loading }) {
     <div className="card space-y-3">
       <h3 className="text-lg font-bold">資料來源</h3>
       {sources.map((src, idx) => (
-        <div key={idx} className="border border-gray-100 rounded-lg p-3 bg-gray-50">
+        <div key={idx} className="border border-gray-100 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-800">
           <div className="flex items-center justify-between mb-1">
             <div className="font-semibold">{src.name}</div>
             <span
@@ -24,10 +24,10 @@ export default function DataSourcesPanel({ sources = [], loading }) {
               {src.status === 'available' ? '可用' : '待啟用'}
             </span>
           </div>
-          <p className="text-xs text-gray-600 mb-1">{src.type}</p>
+          <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">{src.type}</p>
           <p className="text-xs text-gray-500 mb-1">授權：{src.auth}</p>
           <p className="text-xs text-gray-500 mb-1">Endpoint：{src.endpoint}</p>
-          <p className="text-xs text-gray-500">{src.notes}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{src.notes}</p>
         </div>
       ))}
     </div>

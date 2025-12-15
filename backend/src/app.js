@@ -5,6 +5,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { startAllSchedules } from './scripts/syncData.js';
+import getDatabase from './database/db.js';
 
 // 載入路由
 import pollutionRoutes from './routes/pollution.js';
@@ -12,12 +13,38 @@ import gameRoutes from './routes/game.js';
 import resourceRoutes from './routes/resources.js';
 import authRoutes from './routes/auth.js';
 import trackerRoutes from './routes/tracker.js';
+import oceanRoutes from './routes/oceans.js';
 
 // 載入環境變數
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+function repairSeededResourceLinks() {
+  if (process.env.NODE_ENV === 'test') return;
+
+  try {
+    const db = getDatabase();
+    const repairedUrl = 'https://oceanliteracy.unesco.org/resources/';
+    const result = db
+      .prepare(
+        "UPDATE resource_links SET url = ? WHERE TRIM(url) = '#' AND type = 'teaching'"
+      )
+      .run(repairedUrl);
+
+    if (result.changes > 0) {
+      console.log(`Repaired ${result.changes} resource link(s) with missing URL.`);
+    }
+  } catch (error) {
+    console.warn(
+      'Startup resource link repair skipped:',
+      error?.message ? error.message : error
+    );
+  }
+}
+
+repairSeededResourceLinks();
 
 // 安全性中介層
 app.use(helmet());
@@ -59,6 +86,7 @@ app.use('/api/game', gameRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/tracker', trackerRoutes);
+app.use('/api/oceans', oceanRoutes);
 
 // 根路徑
 app.get('/', (req, res) => {

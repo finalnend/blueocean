@@ -5,7 +5,25 @@
 /* 自訂全域樣式 */
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+    background-image:
+      radial-gradient(1100px 700px at 10% -10%, rgba(0, 153, 230, 0.18), transparent 60%),
+      radial-gradient(900px 600px at 90% 10%, rgba(0, 153, 230, 0.12), transparent 55%),
+      radial-gradient(900px 700px at 50% 110%, rgba(0, 153, 230, 0.10), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  html.dark body {
+    background-image:
+      radial-gradient(1100px 700px at 10% -10%, rgba(56, 189, 248, 0.10), transparent 60%),
+      radial-gradient(900px 600px at 90% 10%, rgba(56, 189, 248, 0.07), transparent 55%),
+      radial-gradient(900px 700px at 50% 110%, rgba(56, 189, 248, 0.06), transparent 55%);
+  }
+  
+  input,
+  select,
+  textarea {
+    @apply bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500;
   }
   
   h1 {
@@ -57,7 +75,7 @@
 
 /* 卡片效果 */
 .card {
-  @apply bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300;
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300;
 }
 
 /* 按鈕樣式 */

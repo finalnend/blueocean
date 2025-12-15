@@ -97,7 +97,7 @@ const sampleResources = [
   ],
   [
     '海洋保育教學活動指南',
-    '#',
+    'https://oceanliteracy.unesco.org/resources/',
     'teaching',
     'education,classroom,activity',
     'zh-TW',

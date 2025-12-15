@@ -110,7 +110,7 @@ export default function TrackerPage() {
   }
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1>{t('tracker.title')}</h1>
@@ -244,8 +244,8 @@ export default function TrackerPage() {
             </div>
             
             {/* 地圖說明 */}
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
                 💡 <strong>{t('tracker.howToUse')}：</strong>{t('tracker.mapInstruction')}
               </p>
             </div>
@@ -283,6 +283,7 @@ export default function TrackerPage() {
           </div>
         </div>
         
+        
         {/* 圖表分析區域 */}
         {showCharts && (
           <div className="mt-6 space-y-6">
@@ -305,19 +306,19 @@ export default function TrackerPage() {
                   <div className="text-2xl font-bold text-ocean-blue-600">
                     {timeSeriesData[timeSeriesData.length - 1].value.toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-600">{t('tracker.analysis.latestValue')} (kg/km²)</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">{t('tracker.analysis.latestValue')} (kg/km²)</div>
                 </div>
                 <div className="card text-center">
                   <div className="text-2xl font-bold text-orange-600">
                     {(timeSeriesData.reduce((sum, d) => sum + d.value, 0) / timeSeriesData.length).toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-600">{t('tracker.analysis.averageValue')}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">{t('tracker.analysis.averageValue')}</div>
                 </div>
                 <div className="card text-center">
                   <div className="text-2xl font-bold text-red-600">
                     {Math.max(...timeSeriesData.map(d => d.value)).toFixed(2)}
                   </div>
-                  <div className="text-sm text-gray-600">{t('tracker.analysis.maxValue')}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">{t('tracker.analysis.maxValue')}</div>
                 </div>
               </div>
             )}

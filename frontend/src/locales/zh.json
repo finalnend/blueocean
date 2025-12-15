@@ -92,10 +92,57 @@
   },
   "simulator": {
     "title": "海洋清理模擬遊戲",
+    "nickname": {
+      "label": "暱稱",
+      "placeholder": "輸入暱稱",
+      "prompt": "請輸入您的名稱以登上排行榜："
+    },
+    "modes": {
+      "collision": "AI 碰撞（反彈）",
+      "edgeLeave": "AI 可從邊緣離開"
+    },
+    "difficulty": {
+      "label": "機器人難度",
+      "mixed": "混合（簡/中/難）",
+      "easy": "簡單",
+      "normal": "普通",
+      "hard": "困難",
+      "hintMixed": "初始機器人 = {{count}}。重生會維持相同的比例。"
+    },
+    "bots": {
+      "countLabel": "初始機器人數量",
+      "countHint": "數量越多越難，但也有更多目標可用來成長。"
+    },
+    "speed": {
+      "label": "遊戲速度",
+      "hint": "影響移動與計時。遊戲中也可以調整。"
+    },
+    "lessons": {
+      "title": "教學與技巧",
+      "nextTitle": "下次可以改進的地方"
+    },
+    "submit": {
+      "submitting": "正在儲存分數...",
+      "submitted": "已保存到排行榜。",
+      "error": "保存失敗：",
+      "retry": "重試保存分數"
+    },
+    "sidebar": {
+      "leaderboardTitle": "全球排行榜",
+      "controlsTitle": "操作說明",
+      "controls": {
+        "move": "滑鼠：移動",
+        "split": "Space：分裂（需要足夠體積）",
+        "boost": "Shift（按住）：加速（會消耗體積）",
+        "merge": "分裂後需等待一段時間，接觸才會重新合併",
+        "goal": "吃垃圾與小型 AI 成長；避開更大的 AI"
+      }
+    },
     "ready": {
       "title": "準備開始清理海洋！",
       "desc1": "使用方向鍵移動清理船，在限時內盡可能收集海洋垃圾。",
       "desc2": "注意避開海洋生物！",
+      "advancedControls": "提示：Space 分裂、Shift 加速。",
       "start": "開始遊戲"
     },
     "playing": {

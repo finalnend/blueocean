@@ -16,7 +16,7 @@ export default function EnvironmentInfoPanel({ data, loading }) {
   if (!data) {
     return (
       <div className="card">
-        <p className="text-gray-500 text-center py-4">
+        <p className="text-gray-500 dark:text-gray-400 text-center py-4">
           點擊地圖任意位置查看環境資料
         </p>
       </div>
@@ -30,7 +30,7 @@ export default function EnvironmentInfoPanel({ data, loading }) {
       {/* 位置資訊 */}
       <div className="card">
         <h3 className="text-lg font-bold mb-2">📍 查詢位置</h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
           緯度: {location.lat.toFixed(4)}°, 經度: {location.lng.toFixed(4)}°
         </p>
       </div>
@@ -54,7 +54,7 @@ export default function EnvironmentInfoPanel({ data, loading }) {
                   </span>
                 </div>
                 
-                <div className="text-sm text-gray-600 space-y-1">
+                <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
                   <p>
                     <strong>{airQuality.parameter.toUpperCase()}:</strong> {source.value.toFixed(1)} {airQuality.unit}
                   </p>
@@ -64,13 +64,13 @@ export default function EnvironmentInfoPanel({ data, loading }) {
                   <p>
                     <strong>更新時間:</strong> {new Date(source.datetime_utc).toLocaleString('zh-TW')}
                   </p>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                     💡 {qualityInfo.description}
                   </p>
                 </div>
 
                 {idx < airQuality.sources.length - 1 && (
-                  <hr className="my-3 border-gray-200" />
+                  <hr className="my-3 border-gray-200 dark:border-gray-700" />
                 )}
               </div>
             );
@@ -92,7 +92,7 @@ export default function EnvironmentInfoPanel({ data, loading }) {
             return (
               <div className="space-y-3">
                 {/* 海表溫度 */}
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <div>
                     <p className="text-sm text-gray-600">海表溫度</p>
                     <p className="text-2xl font-bold text-blue-600">
@@ -104,7 +104,7 @@ export default function EnvironmentInfoPanel({ data, loading }) {
 
                 {/* 浪高 */}
                 {latest.wave_height_m !== null && (
-                  <div className="flex items-center justify-between p-3 bg-cyan-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
                     <div>
                       <p className="text-sm text-gray-600">浪高</p>
                       <p className="text-2xl font-bold text-cyan-600">
@@ -117,7 +117,7 @@ export default function EnvironmentInfoPanel({ data, loading }) {
 
                 {/* 溫度警示 */}
                 {tempWarning.warning && (
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/40 rounded-lg">
                     <p className="text-sm text-yellow-800">
                       ⚠️ {tempWarning.message}
                     </p>
@@ -125,7 +125,7 @@ export default function EnvironmentInfoPanel({ data, loading }) {
                 )}
 
                 {/* 時間資訊 */}
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   資料時間: {new Date(latest.time).toLocaleString('zh-TW')}
                 </p>
 
@@ -167,9 +167,9 @@ export default function EnvironmentInfoPanel({ data, loading }) {
             return (
               <div className="grid grid-cols-2 gap-3">
                 {latest.ocean_current_velocity_ms !== null && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <p className="text-xs text-gray-600">洋流速度</p>
-                    <p className="text-lg font-bold text-gray-800">
+                    <p className="text-lg font-bold text-gray-800 dark:text-gray-100">
                       {latest.ocean_current_velocity_ms.toFixed(2)} m/s
                     </p>
                   </div>
@@ -182,7 +182,7 @@ export default function EnvironmentInfoPanel({ data, loading }) {
 
       {/* 錯誤訊息 */}
       {(!airQuality?.success || !sst?.success) && (
-        <div className="card bg-yellow-50 border border-yellow-200">
+        <div className="card bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/40">
           <p className="text-sm text-yellow-800">
             ⚠️ 部分資料載入失敗，請稍後再試或選擇其他位置
           </p>

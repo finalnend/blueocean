@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getResources, getResourceTypes } from '../services/resourceService';
+import { getOceanStats } from '../services/oceanService';
+import OceanStatsPanel from '../components/OceanStatsPanel';
 
 export default function ResourcesPage() {
   const { t } = useTranslation();
@@ -9,9 +11,11 @@ export default function ResourcesPage() {
   const [selectedType, setSelectedType] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [oceanStats, setOceanStats] = useState(null);
   
   useEffect(() => {
     loadResources();
+    loadOceanStats();
   }, []);
   
   useEffect(() => {
@@ -30,7 +34,18 @@ export default function ResourcesPage() {
       setLoading(false);
     }
   };
-  
+
+  const loadOceanStats = async () => {
+    try {
+      const data = await getOceanStats();
+      const oceans = Array.isArray(data?.oceans) ? data.oceans : [];
+      setOceanStats(oceans);
+    } catch (error) {
+      console.error('Failed to load ocean stats:', error);
+      setOceanStats([]);
+    }
+  };
+
   const filterResources = () => {
     let filtered = resources;
     
@@ -71,9 +86,11 @@ export default function ResourcesPage() {
   };
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <h1 className="mb-6">{t('resources.title')}</h1>
+
+        <OceanStatsPanel oceans={oceanStats} />
         
         {/* 篩選與搜尋 */}
         <div className="card mb-6">
@@ -107,7 +124,7 @@ export default function ResourcesPage() {
         {/* 資源列表 */}
         {loading ? (
           <div className="text-center py-20">
-            <p className="text-gray-500">{t('common.loading')}</p>
+            <p className="text-gray-500 dark:text-gray-400">{t('common.loading')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -117,14 +134,14 @@ export default function ResourcesPage() {
                   <span className="text-3xl">{getTypeIcon(resource.type)}</span>
                   <div className="flex-1">
                     <h3 className="text-lg mb-1">{resource.title}</h3>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       {getTypeName(resource.type)}
                     </span>
                   </div>
                 </div>
                 
                 {resource.description && (
-                  <p className="text-gray-600 text-sm mb-4">
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
                     {resource.description}
                   </p>
                 )}
@@ -134,7 +151,7 @@ export default function ResourcesPage() {
                     {resource.tags.map((tag, idx) => (
                       <span 
                         key={idx}
-                        className="px-2 py-1 bg-ocean-blue-100 text-ocean-blue-700 text-xs rounded"
+                        className="px-2 py-1 bg-ocean-blue-100 text-ocean-blue-700 dark:bg-ocean-blue-900/30 dark:text-ocean-blue-100 text-xs rounded"
                       >
                         {tag}
                       </span>
@@ -146,7 +163,7 @@ export default function ResourcesPage() {
                   href={resource.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-ocean-blue-600 font-semibold hover:underline inline-flex items-center"
+                  className="text-ocean-blue-600 dark:text-ocean-blue-300 font-semibold hover:underline inline-flex items-center"
                 >
                   {t('resources.viewResource')} →
                 </a>
@@ -157,7 +174,7 @@ export default function ResourcesPage() {
         
         {!loading && filteredResources.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-gray-500">{t('resources.noResults')}</p>
+            <p className="text-gray-500 dark:text-gray-400">{t('resources.noResults')}</p>
           </div>
         )}
       </div>
