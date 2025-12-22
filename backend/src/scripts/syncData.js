@@ -36,16 +36,22 @@ export function scheduleWeeklyCacheCleanup() {
   });
 }
 
-export async function manualSync() {
-  console.log('\n[SYNC] Running manual sync...');
+export async function manualSync(options = {}) {
+  const force = options.force || process.argv.includes('--force') || process.argv.includes('-f');
+  
+  if (force) {
+    console.log('\n[SYNC] Running FORCED manual sync (ignoring cache)...');
+  } else {
+    console.log('\n[SYNC] Running manual sync...');
+  }
 
   try {
     const owidCount = await importOWIDDataToDatabase();
     console.log(`[SYNC] OWID rows refreshed: ${owidCount}`);
 
-    await importExternalDataToDatabase();
+    await importExternalDataToDatabase({ force });
 
-    await syncNoaaMicroplastics('global');
+    await syncNoaaMicroplastics('global', { force });
     console.log('[SYNC] NOAA microplastics (global) refreshed');
 
     console.log('[SYNC] Manual sync complete\n');

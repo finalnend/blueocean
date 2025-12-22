@@ -319,7 +319,22 @@ async function runForRegion(regionKey) {
 }
 
 // 提供給其他模組使用的同步函式（例如排程）
-export async function syncNoaaMicroplastics(regionKey = 'global') {
+export async function syncNoaaMicroplastics(regionKey = 'global', options = {}) {
+  const force = options.force || false;
+  
+  if (force) {
+    // 清除 NOAA 快取
+    const db = getDatabase();
+    if (regionKey === 'all') {
+      for (const key of Object.keys(REGIONS)) {
+        db.prepare(`DELETE FROM data_cache WHERE cache_key = ?`).run(`${CACHE_KEY_PREFIX}:${key}`);
+      }
+    } else {
+      db.prepare(`DELETE FROM data_cache WHERE cache_key = ?`).run(`${CACHE_KEY_PREFIX}:${regionKey}`);
+    }
+    console.log(`[NOAA] 已清除 ${regionKey} 快取，強制同步...`);
+  }
+  
   if (regionKey === 'all') {
     for (const key of Object.keys(REGIONS)) {
       // eslint-disable-next-line no-await-in-loop

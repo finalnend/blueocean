@@ -109,11 +109,45 @@ export function scheduleCleanup() {
 }
 
 /**
+ * 清除所有同步相關的快取（用於強制同步）
+ */
+export function clearSyncCache() {
+  const cacheKeys = [
+    'wqp_sync_meta',
+    'echo_sync_meta',
+    'emodnet_sync_meta',
+    'ices_dome_sync_meta',
+    'moenv_sync_meta',
+    'npi_sync_meta',
+    'sprep_sync_meta',
+    'noaa_microplastics_global'
+  ];
+  
+  const stmt = db.prepare(`DELETE FROM data_cache WHERE cache_key = ?`);
+  
+  for (const key of cacheKeys) {
+    stmt.run(key);
+  }
+  
+  console.log('[externalDataService] 已清除所有同步快取');
+}
+
+/**
  * 將所有外部資料匯入資料庫
  * 整合歐美來源 (WQP, ECHO, EMODnet, ICES) + 亞太來源 (MOENV, NPI, SPREP)
+ * @param {Object} options - 選項
+ * @param {boolean} options.force - 是否強制同步（忽略快取）
  */
-export async function importExternalDataToDatabase() {
-  console.log('[externalDataService] 開始匯入外部資料來源...');
+export async function importExternalDataToDatabase(options = {}) {
+  const force = options.force || false;
+  
+  if (force) {
+    console.log('[externalDataService] 開始強制匯入外部資料來源（忽略快取）...');
+    // 清除所有同步快取
+    clearSyncCache();
+  } else {
+    console.log('[externalDataService] 開始匯入外部資料來源...');
+  }
   
   const results = {
     // 歐美來源
