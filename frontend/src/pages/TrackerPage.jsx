@@ -36,6 +36,12 @@ export default function TrackerPage() {
   // 地圖顯示模式: 'markers' | 'heatmap' | 'cluster'
   const [displayMode, setDisplayMode] = useState('heatmap');
   
+  // 當前縮放等級
+  const [currentZoom, setCurrentZoom] = useState(2);
+  
+  // 水質監測的縮放閾值（超過此值自動顯示所有節點）
+  const WATER_QUALITY_ZOOM_THRESHOLD = 8;
+  
   useEffect(() => {
     loadMapData();
     loadTimeSeriesData();
@@ -158,10 +164,13 @@ export default function TrackerPage() {
     }
   };
   
-  // 地圖事件監聽組件
-  function MapClickHandler() {
+  // 地圖事件監聽組件（含縮放監聽）
+  function MapClickHandler({ onZoomChange }) {
     useMapEvents({
-      click: handleMapClick
+      click: handleMapClick,
+      zoomend: (e) => {
+        onZoomChange(e.target.getZoom());
+      }
     });
     return null;
   }
@@ -441,15 +450,59 @@ export default function TrackerPage() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   />
-                  <MapClickHandler />
+                  <MapClickHandler onZoomChange={setCurrentZoom} />
                   
-                  {/* 熱力圖模式 */}
-                  {displayMode === 'heatmap' && mapData?.features?.length > 0 && (
+                  {/* 水質監測特殊處理：縮放拉近時顯示所有節點 */}
+                  {selectedType === 'water_quality' && currentZoom >= WATER_QUALITY_ZOOM_THRESHOLD && mapData?.features?.map((feature, idx) => (
+                    <CircleMarker
+                      key={`wq-${idx}`}
+                      center={[
+                        feature.geometry.coordinates[1],
+                        feature.geometry.coordinates[0]
+                      ]}
+                      radius={10}
+                      fillColor={getMarkerColor(feature.properties.value, selectedType)}
+                      color="#fff"
+                      weight={2}
+                      fillOpacity={0.85}
+                    >
+                      <Popup>
+                        <div className="text-sm min-w-[200px]">
+                          <div className="font-bold text-blue-600 mb-2">💧 {t('tracker.types.waterQuality')}</div>
+                          <strong>{t('tracker.value')}:</strong> {feature.properties.value.toFixed(2)} {feature.properties.unit}<br/>
+                          <strong>{t('tracker.region')}:</strong> {feature.properties.region || 'N/A'}<br/>
+                          <strong>{t('tracker.date')}:</strong> {feature.properties.recordedAt}<br/>
+                          <strong>{t('tracker.source', '來源')}:</strong> {feature.properties.source || 'N/A'}
+                          {feature.properties.meta && (
+                            <>
+                              <hr className="my-2" />
+                              <div className="text-xs text-gray-600">
+                                {feature.properties.meta.characteristicName && (
+                                  <div><strong>指標:</strong> {feature.properties.meta.characteristicName}</div>
+                                )}
+                                {feature.properties.meta.siteId && (
+                                  <div><strong>站點:</strong> {feature.properties.meta.siteId}</div>
+                                )}
+                                {feature.properties.meta.organization && (
+                                  <div><strong>機構:</strong> {feature.properties.meta.organization}</div>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </Popup>
+                    </CircleMarker>
+                  ))}
+                  
+                  {/* 熱力圖模式（水質監測縮放拉近時不顯示熱力圖） */}
+                  {displayMode === 'heatmap' && mapData?.features?.length > 0 && 
+                   !(selectedType === 'water_quality' && currentZoom >= WATER_QUALITY_ZOOM_THRESHOLD) && (
                     <HeatmapLayer data={mapData} selectedType={selectedType} />
                   )}
                   
-                  {/* 聚合標記模式 */}
-                  {displayMode === 'cluster' && mapData?.features?.length > 0 && (
+                  {/* 聚合標記模式（水質監測縮放拉近時不顯示聚合） */}
+                  {displayMode === 'cluster' && mapData?.features?.length > 0 && 
+                   !(selectedType === 'water_quality' && currentZoom >= WATER_QUALITY_ZOOM_THRESHOLD) && (
                     <ClusterLayer 
                       data={mapData} 
                       selectedType={selectedType} 
@@ -458,8 +511,10 @@ export default function TrackerPage() {
                     />
                   )}
                   
-                  {/* 單點標記模式 */}
-                  {displayMode === 'markers' && mapData?.features?.map((feature, idx) => (
+                  {/* 單點標記模式（水質監測縮放拉近時不重複顯示） */}
+                  {displayMode === 'markers' && 
+                   !(selectedType === 'water_quality' && currentZoom >= WATER_QUALITY_ZOOM_THRESHOLD) &&
+                   mapData?.features?.map((feature, idx) => (
                     <CircleMarker
                       key={idx}
                       center={[
@@ -491,6 +546,14 @@ export default function TrackerPage() {
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 💡 <strong>{t('tracker.howToUse')}：</strong>{t('tracker.mapInstruction')}
               </p>
+              {selectedType === 'water_quality' && (
+                <p className="text-sm text-blue-600 dark:text-blue-300 mt-2">
+                  💧 <strong>水質監測提示：</strong>縮放至 {WATER_QUALITY_ZOOM_THRESHOLD} 級以上時，將自動顯示所有監測站點的詳細資訊。
+                  {currentZoom >= WATER_QUALITY_ZOOM_THRESHOLD && (
+                    <span className="ml-2 text-green-600">✓ 目前已顯示所有節點 (縮放: {currentZoom})</span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
           
