@@ -12,6 +12,7 @@ import { importICESDOMEToDatabase } from './icesDomeService.js';
 import { importMOENVToDatabase } from './moenvService.js';
 import { importNPIToDatabase } from './npiService.js';
 import { importSPREPToDatabase } from './sprepService.js';
+import { importKoreaMarineToDatabase } from './koreaMarineService.js';
 
 const db = getDatabase();
 
@@ -120,6 +121,7 @@ export function clearSyncCache() {
     'moenv_sync_meta',
     'npi_sync_meta',
     'sprep_sync_meta',
+    'korea_marine_sync_meta',
     'noaa_microplastics_global'
   ];
   
@@ -159,6 +161,7 @@ export async function importExternalDataToDatabase(options = {}) {
     moenv: 0,
     npi: 0,
     sprep: 0,
+    korea: 0,
     errors: []
   };
 
@@ -229,9 +232,18 @@ export async function importExternalDataToDatabase(options = {}) {
     results.errors.push({ source: 'SPREP (Pacific)', error: error.message });
   }
 
+  // 8. Korea Marine (KR) - 韓國海洋水質
+  try {
+    console.log('\n--- Korea Marine (KR) ---');
+    results.korea = await importKoreaMarineToDatabase();
+  } catch (error) {
+    console.error('[Korea] 匯入失敗:', error.message);
+    results.errors.push({ source: 'Korea Marine (KR)', error: error.message });
+  }
+
   // 總結
   const totalWestern = results.wqp + results.echo + results.emodnet + results.ices;
-  const totalAPAC = results.moenv + results.npi + results.sprep;
+  const totalAPAC = results.moenv + results.npi + results.sprep + results.korea;
   const total = totalWestern + totalAPAC;
   
   console.log('\n========================================');
@@ -246,6 +258,7 @@ export async function importExternalDataToDatabase(options = {}) {
   console.log(`  MOENV:   ${results.moenv} 筆`);
   console.log(`  NPI:     ${results.npi} 筆`);
   console.log(`  SPREP:   ${results.sprep} 筆`);
+  console.log(`  Korea:   ${results.korea} 筆`);
   console.log(`  小計:    ${totalAPAC} 筆`);
   console.log('---');
   console.log(`  總計:    ${total} 筆`);
