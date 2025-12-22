@@ -64,9 +64,15 @@
     "date": "日期",
     "howToUse": "如何使用",
     "mapInstruction": "點擊地圖上的標記查看詳細數據",
+    "source": "來源",
     "types": {
       "plastic": "塑膠",
-      "microplastic": "微塑膠"
+      "microplastic": "微塑膠",
+      "waterQuality": "水質監測",
+      "pollutionSource": "污染源",
+      "chemistry": "海洋化學",
+      "contaminant": "污染物",
+      "emission": "排放"
     },
     "regions": {
       "global": "全球",
@@ -208,12 +214,12 @@
       "ngo": "NGO 組織",
       "tool": "工具",
       "teaching": "教學資源"
-    },
-    "app": {
-      "title": "Blue Earth Watch"
-    },
-    "footer": {
-      "text": "© 2024 Blue Earth Watch. 版權所有。"
     }
+  },
+  "app": {
+    "title": "Blue Earth Watch"
+  },
+  "footer": {
+    "text": "© 2024 Blue Earth Watch. 版權所有。"
   }
 }

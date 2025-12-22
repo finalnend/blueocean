@@ -64,9 +64,15 @@
         "date": "Date",
         "howToUse": "How to Use",
         "mapInstruction": "Click on map markers to view detailed data",
+        "source": "Source",
         "types": {
             "plastic": "Plastic",
-            "microplastic": "Microplastic"
+            "microplastic": "Microplastic",
+            "waterQuality": "Water Quality",
+            "pollutionSource": "Pollution Source",
+            "chemistry": "Ocean Chemistry",
+            "contaminant": "Contaminant",
+            "emission": "Emission"
         },
         "regions": {
             "global": "Global",
