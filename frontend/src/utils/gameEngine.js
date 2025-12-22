@@ -26,18 +26,19 @@ export class GameObject {
 
   // Check if this object can eat the other object
   canEat(other) {
-    // Must be significantly larger (e.g., 10% larger mass/radius) to eat
+    // Must be significantly larger (e.g., 10% larger radius) to eat
     if (this.radius <= other.radius * 1.1) return false;
     
-    // Agar.io style: can eat when the larger cell's edge covers the smaller cell's center
-    // This means the distance between centers must be less than the larger cell's radius
+    // Agar.io style eating condition:
+    // The larger cell can eat when it overlaps enough with the smaller cell
+    // Specifically: when the smaller cell's center is within the larger cell's radius
     const dx = this.x - other.x;
     const dy = this.y - other.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
-    // The larger cell can eat when the smaller cell's center is inside (or close to inside)
-    // Using a small tolerance to make eating feel more responsive
-    return distance < this.radius - other.radius * 0.4;
+    // Can eat when the distance is less than the difference of radii (smaller is "inside")
+    // Add a small buffer (0.3 * other.radius) to make eating more responsive
+    return distance < this.radius - other.radius * 0.3;
   }
 
   draw(ctx) {
@@ -70,32 +71,32 @@ const AI_DIFFICULTY = {
   easy: {
     viewRadiusMultiplier: 8,
     maxForce: 0.14,
-    ignorePlayerChance: 0.6,
-    fleeWeight: 3.2,
-    foodWeight: 1.4,
-    preyWeight: 0.5,
-    wanderWeight: 1.0,
+    ignorePlayerChance: 0.5,
+    fleeWeight: 3.5,
+    foodWeight: 1.2,
+    preyWeight: 1.8,  // Increased: AI should chase prey more aggressively
+    wanderWeight: 0.8,
     wanderChange: 0.45,
   },
   normal: {
     viewRadiusMultiplier: 10,
-    maxForce: 0.2,
-    ignorePlayerChance: 0.3,
-    fleeWeight: 3.0,
-    foodWeight: 1.2,
-    preyWeight: 0.8,
-    wanderWeight: 1.0,
+    maxForce: 0.22,
+    ignorePlayerChance: 0.2,
+    fleeWeight: 3.2,
+    foodWeight: 1.0,
+    preyWeight: 2.2,  // Increased: AI should chase prey more aggressively
+    wanderWeight: 0.8,
     wanderChange: 0.3,
   },
   hard: {
-    viewRadiusMultiplier: 12,
-    maxForce: 0.28,
-    ignorePlayerChance: 0.1,
+    viewRadiusMultiplier: 14,
+    maxForce: 0.32,
+    ignorePlayerChance: 0.05,
     fleeWeight: 3.0,
-    foodWeight: 1.0,
-    preyWeight: 1.2,
-    wanderWeight: 0.8,
-    wanderChange: 0.22,
+    foodWeight: 0.8,
+    preyWeight: 2.8,  // Increased: Hard AI is very aggressive
+    wanderWeight: 0.6,
+    wanderChange: 0.2,
   },
 };
 
@@ -260,20 +261,26 @@ export class AIPlayer extends GameObject {
     }
 
     // 2. Calculate Steering Forces (rebalanced priorities)
+    // Agar.io style: prioritize based on opportunity, not just fixed order
     let steer = { x: 0, y: 0 };
 
-    if (closestThreat) {
-      // High priority: Flee
+    if (closestThreat && threatDist < this.radius * 4) {
+      // High priority: Flee from nearby threats
       const fleeForce = this.flee(closestThreat);
       steer.x += fleeForce.x * this.config.fleeWeight;
       steer.y += fleeForce.y * this.config.fleeWeight;
+    } else if (closestPrey && preyDist < closestDist * 0.8) {
+      // If prey is closer than food (with some margin), chase prey first
+      const seekForce = this.seek(closestPrey);
+      steer.x += seekForce.x * this.config.preyWeight;
+      steer.y += seekForce.y * this.config.preyWeight;
     } else if (closestFood) {
-      // Higher priority: Eat food first
+      // Eat nearby food
       const seekForce = this.seek(closestFood);
       steer.x += seekForce.x * this.config.foodWeight;
       steer.y += seekForce.y * this.config.foodWeight;
     } else if (closestPrey) {
-      // Chase prey
+      // Chase prey if no food around
       const seekForce = this.seek(closestPrey);
       steer.x += seekForce.x * this.config.preyWeight;
       steer.y += seekForce.y * this.config.preyWeight;
@@ -989,16 +996,24 @@ export class GameManager {
       this.playerCells = remainingCells;
       this.player = this.getPlayerLargestCell() || this.player;
 
+      // Only bounce if neither can eat the other AND they are similar size
+      // In Agar.io, cells that can't eat each other should be able to overlap/pass through
+      // Only apply bounce for cells of very similar size to prevent clipping
       if (this.options.collisionMode === 'bounce') {
         for (const cell of this.playerCells) {
           if (!cell.markedForDeletion && cell.collidesWith(ai)) {
-            this.resolveBounce(cell, ai);
-            cell.x = clamp(cell.x, cell.radius, this.worldWidth - cell.radius);
-            cell.y = clamp(cell.y, cell.radius, this.worldHeight - cell.radius);
-            if (this.options.aiBoundaryMode === 'clamp') {
-              ai.x = clamp(ai.x, ai.radius, this.worldWidth - ai.radius);
-              ai.y = clamp(ai.y, ai.radius, this.worldHeight - ai.radius);
+            // Only bounce if sizes are very similar (within 10% of each other)
+            const sizeRatio = Math.max(cell.radius, ai.radius) / Math.min(cell.radius, ai.radius);
+            if (sizeRatio < 1.1) {
+              this.resolveBounce(cell, ai, 0.3);
+              cell.x = clamp(cell.x, cell.radius, this.worldWidth - cell.radius);
+              cell.y = clamp(cell.y, cell.radius, this.worldHeight - cell.radius);
+              if (this.options.aiBoundaryMode === 'clamp') {
+                ai.x = clamp(ai.x, ai.radius, this.worldWidth - ai.radius);
+                ai.y = clamp(ai.y, ai.radius, this.worldHeight - ai.radius);
+              }
             }
+            // If one is bigger but can't eat yet, allow overlap (no bounce)
           }
         }
       }
@@ -1028,13 +1043,18 @@ export class GameManager {
           ai1.markedForDeletion = true;
           ai2.updateMass(ai2.mass + ai1.mass);
         } else if (this.options.collisionMode === 'bounce' && ai1.collidesWith(ai2)) {
-          this.resolveBounce(ai1, ai2);
-          if (this.options.aiBoundaryMode === 'clamp') {
-            ai1.x = clamp(ai1.x, ai1.radius, this.worldWidth - ai1.radius);
-            ai1.y = clamp(ai1.y, ai1.radius, this.worldHeight - ai1.radius);
-            ai2.x = clamp(ai2.x, ai2.radius, this.worldWidth - ai2.radius);
-            ai2.y = clamp(ai2.y, ai2.radius, this.worldHeight - ai2.radius);
+          // Only bounce AI vs AI if they are very similar size
+          const sizeRatio = Math.max(ai1.radius, ai2.radius) / Math.min(ai1.radius, ai2.radius);
+          if (sizeRatio < 1.1) {
+            this.resolveBounce(ai1, ai2, 0.3);
+            if (this.options.aiBoundaryMode === 'clamp') {
+              ai1.x = clamp(ai1.x, ai1.radius, this.worldWidth - ai1.radius);
+              ai1.y = clamp(ai1.y, ai1.radius, this.worldHeight - ai1.radius);
+              ai2.x = clamp(ai2.x, ai2.radius, this.worldWidth - ai2.radius);
+              ai2.y = clamp(ai2.y, ai2.radius, this.worldHeight - ai2.radius);
+            }
           }
+          // If sizes differ, allow overlap (Agar.io style)
         }
       }
     }
