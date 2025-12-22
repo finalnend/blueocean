@@ -4,6 +4,9 @@ import {
   plasticWatchService,
   pppService
 } from '../services/trackerApiService.js';
+import { queryMOENVWater } from '../services/moenvService.js';
+import { queryNPIEmissions } from '../services/npiService.js';
+import { querySPREPLayer } from '../services/sprepService.js';
 
 /**
  * 資料來源清單
@@ -11,17 +14,29 @@ import {
  */
 export function getTrackerSources(req, res) {
   const sources = [
+    // ========== 既有來源 ==========
     {
       name: 'Our World in Data',
       type: '塑膠廢棄物 (全球)',
+      region: 'Global',
       status: 'available',
       auth: '不需授權',
       endpoint: 'https://ourworldindata.org/grapher/plastic-waste-generation-total.csv',
       notes: '已內建定時同步，資料來源開放且免金鑰'
     },
     {
+      name: 'NOAA NCEI Microplastics',
+      type: '微塑膠分布 (全球)',
+      region: 'Global',
+      status: 'available',
+      auth: '不需授權',
+      endpoint: 'ArcGIS FeatureServer',
+      notes: '已內建定時同步'
+    },
+    {
       name: 'Global Plastic Watch',
       type: '塑膠熱點 (bbox)',
+      region: 'Global',
       status: process.env.GPW_API_TOKEN ? 'available' : 'requires_key',
       auth: process.env.GPW_API_TOKEN ? '已設定 GPW_API_TOKEN' : '需申請 Token',
       endpoint: 'https://api.globalplasticwatch.org/plastic-sites?bbox=...&min_area=...',
@@ -30,10 +45,76 @@ export function getTrackerSources(req, res) {
     {
       name: 'Copernicus Marine Service (CMEMS)',
       type: '海況（SST/洋流/氯葉素）',
+      region: 'Global',
       status: process.env.COPERNICUS_API_KEY ? 'available' : 'requires_key',
       auth: process.env.COPERNICUS_API_KEY ? '已設定 COPERNICUS_API_KEY' : '需註冊並生成機器 Token',
       endpoint: 'WMS/OGC / motuclient',
       notes: '適合後續漂移/海況分析；需免費註冊後取得 API Key'
+    },
+    // ========== 歐美來源 ==========
+    {
+      name: 'Water Quality Portal (WQP)',
+      type: '近岸水質監測',
+      region: 'North America',
+      status: 'available',
+      auth: '不需授權',
+      endpoint: 'https://www.waterqualitydata.us/data/Result/search',
+      notes: '美國近岸/河口水質資料，已內建定時同步'
+    },
+    {
+      name: 'EPA ECHO',
+      type: '污染源設施',
+      region: 'North America',
+      status: 'available',
+      auth: '不需授權',
+      endpoint: 'https://echodata.epa.gov/echo/cwa_rest_services',
+      notes: '美國 NPDES 許可設施，已內建定時同步'
+    },
+    {
+      name: 'EMODnet Chemistry',
+      type: '海洋化學監測',
+      region: 'Europe',
+      status: 'available',
+      auth: '不需授權',
+      endpoint: 'https://erddap.emodnet-chemistry.eu/erddap',
+      notes: '歐洲海域化學/污染監測，已內建定時同步'
+    },
+    {
+      name: 'ICES DOME',
+      type: '海洋污染物監測',
+      region: 'Europe',
+      status: 'available',
+      auth: '不需授權',
+      endpoint: 'https://dome.ices.dk/api',
+      notes: '歐洲海水/沉積物/生物體污染物，已內建定時同步'
+    },
+    // ========== 亞太來源 ==========
+    {
+      name: 'MOENV (TW)',
+      type: '水質監測',
+      region: 'Asia-Pacific (Taiwan)',
+      status: process.env.MOENV_API_KEY ? 'available' : 'requires_key',
+      auth: process.env.MOENV_API_KEY ? '已設定 MOENV_API_KEY' : '需申請 API Key',
+      endpoint: 'https://data.moenv.gov.tw/api/v2/{DataID}',
+      notes: '台灣環境部開放資料，需註冊取得 API Key'
+    },
+    {
+      name: 'NPI (AU)',
+      type: '污染排放清冊',
+      region: 'Asia-Pacific (Australia)',
+      status: 'available',
+      auth: '不需授權',
+      endpoint: 'https://data.gov.au/geoserver/npi/wfs',
+      notes: '澳洲國家污染物清冊 WFS，已內建定時同步'
+    },
+    {
+      name: 'SPREP (Pacific)',
+      type: '海洋/海岸環境',
+      region: 'Asia-Pacific (Pacific Islands)',
+      status: 'available',
+      auth: '不需授權',
+      endpoint: 'https://geoserver.sprep.org/geoserver/pipap/ows',
+      notes: '太平洋島國環境資料 WFS，已內建定時同步'
     }
   ];
 
@@ -383,6 +464,130 @@ export async function getSSTGrid(req, res) {
     res.status(500).json({
       success: false,
       error: error.message || '取得 SST 網格資料時發生錯誤'
+    });
+  }
+}
+
+
+// ========== 亞太來源 API 端點 ==========
+
+/**
+ * 台灣 MOENV 水質資料查詢
+ * GET /api/tracker/moenv-water?dataId=wqx_p_10&yearMonth=2024_01&limit=100
+ */
+export async function getMOENVWater(req, res) {
+  try {
+    const { dataId, yearMonth, limit = 100 } = req.query;
+
+    if (!dataId) {
+      return res.status(400).json({
+        success: false,
+        error: '缺少必要參數: dataId (例如 wqx_p_10)'
+      });
+    }
+
+    const result = await queryMOENVWater({
+      dataId,
+      yearMonth,
+      limit: parseInt(limit)
+    });
+
+    if (result.error) {
+      return res.status(400).json({
+        success: false,
+        error: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      ...result
+    });
+
+  } catch (error) {
+    console.error('getMOENVWater error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '取得 MOENV 資料時發生錯誤'
+    });
+  }
+}
+
+/**
+ * 澳洲 NPI 排放資料查詢
+ * GET /api/tracker/npi-emissions?bbox=140,-40,155,-25&substance=Mercury&year=2022&limit=100
+ */
+export async function getNPIEmissions(req, res) {
+  try {
+    const { bbox, substance, year, limit = 100 } = req.query;
+
+    const result = await queryNPIEmissions({
+      bbox,
+      substance,
+      year,
+      limit: parseInt(limit)
+    });
+
+    if (result.error) {
+      return res.status(400).json({
+        success: false,
+        error: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      ...result
+    });
+
+  } catch (error) {
+    console.error('getNPIEmissions error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '取得 NPI 資料時發生錯誤'
+    });
+  }
+}
+
+/**
+ * 太平洋 SPREP 圖層資料查詢
+ * GET /api/tracker/sprep-layer?layer=marine_protected&bbox=160,-20,180,0&country=Fiji&limit=100
+ */
+export async function getSPREPLayer(req, res) {
+  try {
+    const { layer, bbox, country, limit = 100 } = req.query;
+
+    if (!layer) {
+      return res.status(400).json({
+        success: false,
+        error: '缺少必要參數: layer (例如 marine_protected, coral_reefs, coastal_areas)'
+      });
+    }
+
+    const result = await querySPREPLayer({
+      layer,
+      bbox,
+      country,
+      limit: parseInt(limit)
+    });
+
+    if (result.error) {
+      return res.status(400).json({
+        success: false,
+        error: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      ...result
+    });
+
+  } catch (error) {
+    console.error('getSPREPLayer error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || '取得 SPREP 資料時發生錯誤'
     });
   }
 }

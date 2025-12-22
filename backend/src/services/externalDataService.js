@@ -1,11 +1,24 @@
+/**
+ * External Data Service
+ * 整合所有外部資料來源的匯入功能
+ */
 import getDatabase from '../database/db.js';
+// 歐美來源
+import { importWQPToDatabase } from './wqpService.js';
+import { importECHOToDatabase } from './echoService.js';
+import { importEMODnetToDatabase } from './emodnetChemService.js';
+import { importICESDOMEToDatabase } from './icesDomeService.js';
+// 亞太來源
+import { importMOENVToDatabase } from './moenvService.js';
+import { importNPIToDatabase } from './npiService.js';
+import { importSPREPToDatabase } from './sprepService.js';
 
 const db = getDatabase();
 
 /**
  * 簡單的資料庫快取管理
  */
-class CacheManager {
+export class CacheManager {
   // 檢查快取是否存在且未過期
   static get(key) {
     const stmt = db.prepare(`
@@ -40,7 +53,7 @@ class CacheManager {
 
 /**
  * Our World in Data 資料占位函式
- * 真正匯入邏輯在 owidDataParser.js 中，這裡不再回傳任何內建 MOCK。
+ * 真正匯入邏輯在 owidDataParser.js 中
  */
 export async function fetchOWIDPlasticData() {
   console.warn(
@@ -91,21 +104,143 @@ export async function fetchAllExternalData() {
  * 定期清理快取
  */
 export function scheduleCleanup() {
-  // 每天清一次
-  setInterval(() => {
-    console.log('[externalDataService] 清理過期快取...');
-    CacheManager.clearExpired();
-  }, 24 * 60 * 60 * 1000);
+  console.log('[externalDataService] 清理過期快取...');
+  CacheManager.clearExpired();
 }
 
 /**
- * 將外部資料匯入資料庫的占位函式
- * 目前不做任何寫入，也不產生 MOCK。
+ * 將所有外部資料匯入資料庫
+ * 整合歐美來源 (WQP, ECHO, EMODnet, ICES) + 亞太來源 (MOENV, NPI, SPREP)
  */
 export async function importExternalDataToDatabase() {
-  console.log(
-    '[externalDataService] importExternalDataToDatabase 目前未實作，不匯入 MOCK 資料。'
-  );
+  console.log('[externalDataService] 開始匯入外部資料來源...');
+  
+  const results = {
+    // 歐美來源
+    wqp: 0,
+    echo: 0,
+    emodnet: 0,
+    ices: 0,
+    // 亞太來源
+    moenv: 0,
+    npi: 0,
+    sprep: 0,
+    errors: []
+  };
+
+  // ========== 歐美來源 ==========
+  
+  // 1. Water Quality Portal (WQP) - 美國近岸水質
+  try {
+    console.log('\n--- WQP (Water Quality Portal) ---');
+    results.wqp = await importWQPToDatabase();
+  } catch (error) {
+    console.error('[WQP] 匯入失敗:', error.message);
+    results.errors.push({ source: 'WQP', error: error.message });
+  }
+
+  // 2. EPA ECHO - 美國污染源設施
+  try {
+    console.log('\n--- EPA ECHO ---');
+    results.echo = await importECHOToDatabase();
+  } catch (error) {
+    console.error('[ECHO] 匯入失敗:', error.message);
+    results.errors.push({ source: 'EPA_ECHO', error: error.message });
+  }
+
+  // 3. EMODnet Chemistry - 歐洲海洋化學
+  try {
+    console.log('\n--- EMODnet Chemistry ---');
+    results.emodnet = await importEMODnetToDatabase();
+  } catch (error) {
+    console.error('[EMODnet] 匯入失敗:', error.message);
+    results.errors.push({ source: 'EMODnet_Chemistry', error: error.message });
+  }
+
+  // 4. ICES DOME - 歐洲海洋污染物監測
+  try {
+    console.log('\n--- ICES DOME ---');
+    results.ices = await importICESDOMEToDatabase();
+  } catch (error) {
+    console.error('[ICES] 匯入失敗:', error.message);
+    results.errors.push({ source: 'ICES_DOME', error: error.message });
+  }
+
+  // ========== 亞太來源 ==========
+
+  // 5. MOENV (TW) - 台灣環境部水質資料
+  try {
+    console.log('\n--- MOENV (Taiwan) ---');
+    results.moenv = await importMOENVToDatabase();
+  } catch (error) {
+    console.error('[MOENV] 匯入失敗:', error.message);
+    results.errors.push({ source: 'MOENV (TW)', error: error.message });
+  }
+
+  // 6. NPI (AU) - 澳洲國家污染物清冊
+  try {
+    console.log('\n--- NPI (Australia) ---');
+    results.npi = await importNPIToDatabase();
+  } catch (error) {
+    console.error('[NPI] 匯入失敗:', error.message);
+    results.errors.push({ source: 'NPI (AU)', error: error.message });
+  }
+
+  // 7. SPREP (Pacific) - 太平洋島國環境資料
+  try {
+    console.log('\n--- SPREP (Pacific) ---');
+    results.sprep = await importSPREPToDatabase();
+  } catch (error) {
+    console.error('[SPREP] 匯入失敗:', error.message);
+    results.errors.push({ source: 'SPREP (Pacific)', error: error.message });
+  }
+
+  // 總結
+  const totalWestern = results.wqp + results.echo + results.emodnet + results.ices;
+  const totalAPAC = results.moenv + results.npi + results.sprep;
+  const total = totalWestern + totalAPAC;
+  
+  console.log('\n========================================');
+  console.log('[externalDataService] 外部資料匯入完成');
+  console.log('--- 歐美來源 ---');
+  console.log(`  WQP:     ${results.wqp} 筆`);
+  console.log(`  ECHO:    ${results.echo} 筆`);
+  console.log(`  EMODnet: ${results.emodnet} 筆`);
+  console.log(`  ICES:    ${results.ices} 筆`);
+  console.log(`  小計:    ${totalWestern} 筆`);
+  console.log('--- 亞太來源 ---');
+  console.log(`  MOENV:   ${results.moenv} 筆`);
+  console.log(`  NPI:     ${results.npi} 筆`);
+  console.log(`  SPREP:   ${results.sprep} 筆`);
+  console.log(`  小計:    ${totalAPAC} 筆`);
+  console.log('---');
+  console.log(`  總計:    ${total} 筆`);
+  
+  if (results.errors.length > 0) {
+    console.log(`  錯誤:    ${results.errors.length} 個來源失敗`);
+  }
+  console.log('========================================\n');
+
+  return results;
+}
+
+/**
+ * 取得所有資料來源的統計
+ */
+export function getDataSourceStats() {
+  const stmt = db.prepare(`
+    SELECT 
+      source,
+      type,
+      COUNT(*) as count,
+      MIN(recorded_at) as earliest,
+      MAX(recorded_at) as latest
+    FROM pollution_data
+    GROUP BY source, type
+    ORDER BY source, type
+  `);
+
+  return stmt.all();
 }
 
 export default {
@@ -114,6 +249,7 @@ export default {
   fetchCopernicusClimateData,
   fetchAllExternalData,
   scheduleCleanup,
-  importExternalDataToDatabase
+  importExternalDataToDatabase,
+  getDataSourceStats,
+  CacheManager
 };
-
