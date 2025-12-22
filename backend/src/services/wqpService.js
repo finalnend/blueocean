@@ -2,6 +2,11 @@
  * Water Quality Portal (WQP) Service
  * 近岸/河口水質資料（營養鹽、溶氧、重金屬等）
  * API: https://www.waterqualitydata.us/
+ * 
+ * 根據 WQP FAQ：
+ * - 日期格式必須是 MM-DD-YYYY
+ * - 大查詢容易 timeout，建議用日期範圍縮小
+ * - 逐月抓取比一次抓一年穩定
  */
 import axios from 'axios';
 import { parse } from 'csv-parse/sync';
@@ -9,7 +14,7 @@ import getDatabase from '../database/db.js';
 
 const WQP_BASE_URL = 'https://www.waterqualitydata.us/data';
 
-// 使用 statecode（更可靠）
+// 沿海州份（使用 statecode 格式）
 const COASTAL_STATES = [
   { code: 'US:06', name: 'California' },
   { code: 'US:12', name: 'Florida' },
@@ -32,22 +37,15 @@ function formatWqpDate(date) {
 const CACHE_KEY = 'wqp_sync_meta';
 const STALE_WINDOW_HOURS = 24;
 
-/**
- * 取得同步 metadata
- */
 function getSyncMeta() {
   const db = getDatabase();
   const row = db.prepare(`
     SELECT cache_data FROM data_cache
     WHERE cache_key = ? AND expires_at > datetime('now')
   `).get(CACHE_KEY);
-
   return row?.cache_data ? JSON.parse(row.cache_data) : null;
 }
 
-/**
- * 儲存同步 metadata
- */
 function saveSyncMeta(meta) {
   const db = getDatabase();
   db.prepare(`
@@ -56,9 +54,6 @@ function saveSyncMeta(meta) {
   `).run(CACHE_KEY, JSON.stringify(meta));
 }
 
-/**
- * 檢查是否在 stale window 內
- */
 function isRecentlyChecked(meta) {
   if (!meta?.lastSyncedAt) return false;
   const lastSync = new Date(meta.lastSyncedAt).getTime();
@@ -71,18 +66,15 @@ function isRecentlyChecked(meta) {
  * 解析 WQP CSV 回應（使用正式 CSV parser）
  */
 function parseWQPCSV(csvText) {
-  if (!csvText || csvText.trim().length === 0) {
-    return [];
-  }
+  if (!csvText || csvText.trim().length === 0) return [];
 
   try {
-    const records = parse(csvText, {
-      columns: true,           // 第一行當作 header
+    return parse(csvText, {
+      columns: true,
       skip_empty_lines: true,
-      relax_quotes: true,      // 容許不完整引號
-      relax_column_count: true // 容許欄位數不一致
+      relax_quotes: true,
+      relax_column_count: true
     });
-    return records;
   } catch (error) {
     console.error(`[WQP] CSV parse error: ${error.message}`);
     return [];
@@ -90,9 +82,10 @@ function parseWQPCSV(csvText) {
 }
 
 /**
- * 從 WQP 取得水質資料（使用 statecode，改為 30 天範圍避免 timeout）
+ * 從 WQP 取得水質資料
+ * 根據 FAQ 建議：先只用 statecode + 日期，不加 characteristicType 避免觸發慢查詢
  */
-export async function fetchWQPResults({ stateCode, startDate, endDate, characteristicType }) {
+export async function fetchWQPResults({ stateCode, startDate, endDate }) {
   const params = {
     mimeType: 'csv',
     zip: 'no',
@@ -100,37 +93,64 @@ export async function fetchWQPResults({ stateCode, startDate, endDate, character
     statecode: stateCode,
     startDateLo: formatWqpDate(startDate),
     startDateHi: formatWqpDate(endDate),
-    characteristicType: characteristicType || 'Nutrient',
     sampleMedia: 'Water',
-    dataProfile: 'narrowResult'
+    dataProfile: 'narrowResult',
+    // 只取 EPA WQX 資料，避免碰到 NWIS(USGS) 的 legacy 限制
+    providers: 'STORET'
   };
 
+  // 印出完整 URL 方便 debug
+  const fullUrl = `${WQP_BASE_URL}/Result/search?${new URLSearchParams(params).toString()}`;
+  console.log(`[WQP] Request URL: ${fullUrl}`);
+
   try {
-    console.log(`[WQP] Fetching ${stateCode} from ${formatWqpDate(startDate)} to ${formatWqpDate(endDate)}...`);
     const response = await axios.get(`${WQP_BASE_URL}/Result/search`, {
       params,
-      timeout: 60000,  // 降低 timeout 避免長時間等待
+      timeout: 90000,
       responseType: 'text'
     });
 
     return parseWQPCSV(response.data);
   } catch (error) {
-    // 印出詳細錯誤資訊
     const status = error.response?.status;
     const responseData = error.response?.data;
+    const configUrl = error.config?.url;
+    const configParams = JSON.stringify(error.config?.params || {});
+    
     console.error(`[WQP] Fetch failed: ${error.message}`);
-    if (status) {
-      console.error(`[WQP] Status: ${status}`);
-    }
+    console.error(`[WQP] Status: ${status || 'N/A'}`);
+    console.error(`[WQP] Config URL: ${configUrl}`);
+    console.error(`[WQP] Config Params: ${configParams}`);
     if (responseData && typeof responseData === 'string') {
-      console.error(`[WQP] Response (first 300 chars): ${responseData.slice(0, 300)}`);
+      console.error(`[WQP] Response (first 500 chars): ${responseData.slice(0, 500)}`);
     }
     return [];
   }
 }
 
 /**
+ * 產生過去 N 個月的月份區間
+ */
+function getMonthRanges(months = 3) {
+  const ranges = [];
+  const now = new Date();
+  
+  for (let i = 0; i < months; i++) {
+    const endDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 0); // 月底
+    const startDate = new Date(now.getFullYear(), now.getMonth() - i, 1);   // 月初
+    ranges.push({
+      start: startDate.toISOString().slice(0, 10),
+      end: endDate.toISOString().slice(0, 10),
+      label: `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`
+    });
+  }
+  
+  return ranges;
+}
+
+/**
  * 將 WQP 資料匯入 pollution_data
+ * 改成逐月抓取，避免大查詢 timeout
  */
 export async function importWQPToDatabase() {
   const db = getDatabase();
@@ -141,108 +161,88 @@ export async function importWQPToDatabase() {
     return 0;
   }
 
-  console.log('[WQP] 開始匯入水質資料...');
-
-  // 改為查詢過去 2 天（避免大州 timeout/500）
-  const endDate = new Date();
-  const startDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
-
-  let totalInserted = 0;
+  console.log('[WQP] 開始匯入水質資料（逐月抓取模式）...');
 
   // 刪除舊資料
-  db.prepare(`
-    DELETE FROM pollution_data 
-    WHERE source = 'WQP' AND type = 'water_quality'
-  `).run();
+  db.prepare(`DELETE FROM pollution_data WHERE source = 'WQP' AND type = 'water_quality'`).run();
 
   const insertStmt = db.prepare(`
     INSERT INTO pollution_data (source, type, lat, lng, value, unit, recorded_at, meta)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  // 逐州抓取
+  let totalInserted = 0;
+  
+  // 只抓最近 1 個月（先跑通，之後可以改成 3 個月）
+  const monthRanges = getMonthRanges(1);
+
   for (const state of COASTAL_STATES) {
     let stateInserted = 0;
     
-    try {
-      const results = await fetchWQPResults({
-        stateCode: state.code,
-        startDate: startDate.toISOString().slice(0, 10),
-        endDate: endDate.toISOString().slice(0, 10),
-        characteristicType: 'Nutrient'
-      });
+    for (const range of monthRanges) {
+      try {
+        console.log(`[WQP] ${state.name} - ${range.label}...`);
+        
+        const results = await fetchWQPResults({
+          stateCode: state.code,
+          startDate: range.start,
+          endDate: range.end
+        });
 
-      if (!results.length) {
-        console.log(`[WQP] ${state.name}: 抓取 0 筆`);
-        continue;
-      }
-
-      console.log(`[WQP] ${state.name}: 抓取 ${results.length} 筆，開始解析...`);
-
-      // 限制每州最多 500 筆
-      const limitedResults = results.slice(0, 500);
-
-      const insertMany = db.transaction((rows) => {
-        for (const row of rows) {
-          // 嘗試多種可能的欄位名稱
-          const lat = parseFloat(
-            row.LatitudeMeasure || 
-            row['ActivityLocation/LatitudeMeasure'] ||
-            row.ActivityLocation_LatitudeMeasure
-          );
-          const lng = parseFloat(
-            row.LongitudeMeasure || 
-            row['ActivityLocation/LongitudeMeasure'] ||
-            row.ActivityLocation_LongitudeMeasure
-          );
-          const value = parseFloat(
-            row.ResultMeasureValue ||
-            row['ResultMeasure/MeasureValue']
-          );
-
-          if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(value)) {
-            continue;
-          }
-
-          const recordedAt = row.ActivityStartDate || endDate.toISOString().slice(0, 10);
-          const unit = row['ResultMeasure/MeasureUnitCode'] || 
-                      row.ResultMeasure_MeasureUnitCode || 
-                      row.MeasureUnitCode || 
-                      'unknown';
-
-          insertStmt.run(
-            'WQP',
-            'water_quality',
-            lat,
-            lng,
-            value,
-            unit,
-            recordedAt,
-            JSON.stringify({
-              region: state.name,
-              regionName: state.name,
-              characteristicName: row.CharacteristicName,
-              sampleMedia: row.ActivityMediaName || 'Water',
-              organization: row.OrganizationIdentifier,
-              siteId: row.MonitoringLocationIdentifier,
-              detectionLimit: row['DetectionQuantitationLimitMeasure/MeasureValue'],
-              queryUrl: `${WQP_BASE_URL}/Result/search?statecode=${state.code}`
-            })
-          );
-          stateInserted++;
-          totalInserted++;
+        if (!results.length) {
+          console.log(`[WQP] ${state.name} ${range.label}: 0 筆`);
+          continue;
         }
-      });
 
-      insertMany(limitedResults);
-      console.log(`[WQP] ${state.name}: 成功寫入 ${stateInserted} 筆`);
+        console.log(`[WQP] ${state.name} ${range.label}: 抓取 ${results.length} 筆`);
 
-      // 避免 API rate limit
-      await new Promise(resolve => setTimeout(resolve, 1500));
+        // 每州每月最多 200 筆
+        const limitedResults = results.slice(0, 200);
+        let monthInserted = 0;
 
-    } catch (error) {
-      console.error(`[WQP] ${state.name} 匯入失敗:`, error.message);
+        const insertMany = db.transaction((rows) => {
+          for (const row of rows) {
+            const lat = parseFloat(row.LatitudeMeasure || row['ActivityLocation/LatitudeMeasure']);
+            const lng = parseFloat(row.LongitudeMeasure || row['ActivityLocation/LongitudeMeasure']);
+            const value = parseFloat(row.ResultMeasureValue || row['ResultMeasure/MeasureValue']);
+
+            if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(value)) {
+              continue;
+            }
+
+            const recordedAt = row.ActivityStartDate || range.end;
+            const unit = row['ResultMeasure/MeasureUnitCode'] || row.ResultMeasure_MeasureUnitCode || 'unknown';
+
+            insertStmt.run(
+              'WQP',
+              'water_quality',
+              lat, lng, value, unit, recordedAt,
+              JSON.stringify({
+                region: state.name,
+                characteristicName: row.CharacteristicName,
+                organization: row.OrganizationIdentifier,
+                siteId: row.MonitoringLocationIdentifier,
+                month: range.label
+              })
+            );
+            monthInserted++;
+            stateInserted++;
+            totalInserted++;
+          }
+        });
+
+        insertMany(limitedResults);
+        console.log(`[WQP] ${state.name} ${range.label}: 寫入 ${monthInserted} 筆`);
+
+        // 避免 rate limit
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+      } catch (error) {
+        console.error(`[WQP] ${state.name} ${range.label} 失敗:`, error.message);
+      }
     }
+    
+    console.log(`[WQP] ${state.name} 總計: ${stateInserted} 筆`);
   }
 
   saveSyncMeta({ lastSyncedAt: new Date().toISOString() });
@@ -250,7 +250,4 @@ export async function importWQPToDatabase() {
   return totalInserted;
 }
 
-export default {
-  fetchWQPResults,
-  importWQPToDatabase
-};
+export default { fetchWQPResults, importWQPToDatabase };
