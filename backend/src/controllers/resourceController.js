@@ -9,14 +9,18 @@ function isValidExternalUrl(url) {
   return /^https?:\/\//i.test(trimmed);
 }
 
-// 取得資源列表
+// 取得資源列表（支援 i18n）
 export const getResources = (req, res) => {
   try {
-    const { type, tag, language, search } = req.query;
+    const { type, tag, language, search, lang } = req.query;
+    // lang 參數用於 i18n，決定返回哪種語言的標題和描述
+    const displayLang = lang || 'en';
+    const isZh = displayLang.startsWith('zh');
     
     let query = `
       SELECT 
-        id, title, url, type, tags, language, description, added_at
+        id, title, url, type, tags, language, description, added_at,
+        title_en, title_zh, description_en, description_zh
       FROM resource_links
       WHERE 1=1
     `;
@@ -39,8 +43,10 @@ export const getResources = (req, res) => {
     }
     
     if (search) {
-      query += ` AND (title LIKE ? OR description LIKE ?)`;
-      params.push(`%${search}%`, `%${search}%`);
+      // 搜尋時同時搜尋兩種語言的標題和描述
+      query += ` AND (title LIKE ? OR description LIKE ? OR title_en LIKE ? OR title_zh LIKE ? OR description_en LIKE ? OR description_zh LIKE ?)`;
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
     }
     
     query += ` ORDER BY added_at DESC`;
@@ -48,17 +54,33 @@ export const getResources = (req, res) => {
     const stmt = db.prepare(query);
     const resources = stmt.all(...params);
     
-    // 解析 tags
+    // 解析 tags 並根據語言選擇標題和描述
     const formattedResources = resources
       .map((resource) => ({
         ...resource,
         url: typeof resource.url === 'string' ? resource.url.trim() : resource.url,
       }))
       .filter((resource) => isValidExternalUrl(resource.url))
-      .map((resource) => ({
-        ...resource,
-        tags: resource.tags ? resource.tags.split(',') : [],
-      }));
+      .map((resource) => {
+        // 根據請求的語言選擇標題和描述
+        const title = isZh 
+          ? (resource.title_zh || resource.title_en || resource.title)
+          : (resource.title_en || resource.title);
+        const description = isZh
+          ? (resource.description_zh || resource.description_en || resource.description)
+          : (resource.description_en || resource.description);
+        
+        return {
+          id: resource.id,
+          title,
+          url: resource.url,
+          type: resource.type,
+          tags: resource.tags ? resource.tags.split(',') : [],
+          language: resource.language,
+          description,
+          added_at: resource.added_at
+        };
+      });
     
     res.json({
       count: formattedResources.length,

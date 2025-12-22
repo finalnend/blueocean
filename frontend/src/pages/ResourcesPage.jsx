@@ -5,7 +5,7 @@ import { getOceanStats } from '../services/oceanService';
 import OceanStatsPanel from '../components/OceanStatsPanel';
 
 export default function ResourcesPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [resources, setResources] = useState([]);
   const [filteredResources, setFilteredResources] = useState([]);
   const [selectedType, setSelectedType] = useState('all');
@@ -16,7 +16,7 @@ export default function ResourcesPage() {
   useEffect(() => {
     loadResources();
     loadOceanStats();
-  }, []);
+  }, [i18n.language]); // 當語言變更時重新載入資源
   
   useEffect(() => {
     filterResources();
@@ -25,7 +25,8 @@ export default function ResourcesPage() {
   const loadResources = async () => {
     try {
       setLoading(true);
-      const data = await getResources();
+      // 傳遞當前語言給 API
+      const data = await getResources({ lang: i18n.language });
       setResources(data.resources);
       setFilteredResources(data.resources);
     } catch (error) {
