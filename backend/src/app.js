@@ -69,9 +69,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting - 防止 API 濫用
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 分鐘
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // 限制 100 次請求
-  message: '請求過於頻繁，請稍後再試'
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 1 * 60 * 1000, // 1 分鐘
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 200, // 每分鐘 200 次請求
+  message: { error: '請求過於頻繁，請稍後再試' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 app.use('/api/', limiter);
