@@ -4,11 +4,16 @@
 
 ### 1. 準備環境變數
 ```bash
-# 複製並編輯環境變數
+# 複製環境變數模板到項目根目錄
 cp .env.production .env
 
-# 生成 JWT 密鑰
+# 編輯 .env 設置你的配置
+nano .env
+
+# 生成 JWT 密鑰（可選）
+# Linux/Mac:
 echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
+# 或手動設置一個強密碼
 ```
 
 ### 2. 構建並啟動

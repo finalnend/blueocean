@@ -6,14 +6,13 @@ services:
     container_name: bew-backend
     restart: unless-stopped
     user: "1000:1000"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
       - PORT=3000
       - DATABASE_PATH=/app/database/blue-earth-watch.db
-      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost}
     volumes:
-      # 持久化資料庫 - 確保目錄存在且有寫入權限
       - bew-database:/app/database
     networks:
       - bew-network
