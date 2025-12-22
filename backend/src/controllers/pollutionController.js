@@ -200,8 +200,9 @@ export const getTimeSeries = (req, res) => {
 export const getPollutionTypes = (req, res) => {
   try {
     const stmt = db.prepare(`
-      SELECT DISTINCT type, unit
+      SELECT type, MIN(unit) as unit, COUNT(*) as count
       FROM pollution_data
+      GROUP BY type
       ORDER BY type
     `);
     const types = stmt.all();
