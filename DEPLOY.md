@@ -55,7 +55,7 @@ docker-compose logs -f backend
 docker-compose exec backend sh
 
 # 備份資料庫
-cp ./data/database/blue-earth-watch.db ./backup/
+docker cp bew-backend:/app/database/blue-earth-watch.db ./backup/
 ```
 
 ---
@@ -89,7 +89,14 @@ networks:
 
 ### 資料庫權限問題
 ```bash
-sudo chown -R 1000:1000 ./data/database
+# 檢查 volume 權限
+docker-compose exec backend ls -la /app/database
+
+# 如果權限有問題，重新創建 volume
+docker-compose down -v
+docker-compose up -d
+docker-compose exec backend npm run init-db
+docker-compose exec backend npm run seed
 ```
 
 ### 容器無法啟動
@@ -101,7 +108,6 @@ docker-compose logs frontend
 ### 重置所有數據
 ```bash
 docker-compose down -v
-rm -rf ./data/database/*
 docker-compose up -d
 docker-compose exec backend npm run init-db
 docker-compose exec backend npm run seed

@@ -14,14 +14,18 @@ RUN npm ci --only=production
 # 複製源代碼
 COPY . .
 
-# 創建資料庫目錄
-RUN mkdir -p /app/database
+# 創建資料庫目錄並設置權限
+RUN mkdir -p /app/database && chown -R node:node /app/database
 
 # 設置環境變數
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV DATABASE_PATH=/app/database/blue-earth-watch.db
 
 EXPOSE 3000
+
+# 使用非 root 用戶運行
+USER node
 
 # 啟動命令
 CMD ["node", "src/app.js"]
