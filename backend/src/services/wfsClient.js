@@ -50,7 +50,12 @@ export class WFSClient {
           layers: [...new Set(layers)]
         };
       } catch (error) {
+        const status = error.response?.status;
+        const url = error.config?.url;
+        const params = JSON.stringify(error.config?.params || {});
         console.log(`[WFS] GetCapabilities v${version} failed: ${error.message}`);
+        if (status) console.log(`[WFS] Status: ${status}, URL: ${url}`);
+        if (status === 404) console.log(`[WFS] Params: ${params}`);
         continue;
       }
     }
@@ -157,7 +162,13 @@ export class WFSClient {
           data: response.data
         };
       } catch (error) {
+        const status = error.response?.status;
+        const responseData = error.response?.data;
         console.log(`[WFS] GetFeature v${version} failed for ${typeName}: ${error.message}`);
+        if (status) console.log(`[WFS] Status: ${status}`);
+        if (responseData && typeof responseData === 'string') {
+          console.log(`[WFS] Response (first 200 chars): ${responseData.slice(0, 200)}`);
+        }
         continue;
       }
     }

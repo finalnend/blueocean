@@ -4,6 +4,7 @@
  * API: https://www.waterqualitydata.us/
  */
 import axios from 'axios';
+import { parse } from 'csv-parse/sync';
 import getDatabase from '../database/db.js';
 
 const WQP_BASE_URL = 'https://www.waterqualitydata.us/data';
@@ -65,30 +66,31 @@ function isRecentlyChecked(meta) {
   return msSince < STALE_WINDOW_HOURS * 60 * 60 * 1000;
 }
 
+
 /**
- * 解析 WQP CSV 回應
+ * 解析 WQP CSV 回應（使用正式 CSV parser）
  */
 function parseWQPCSV(csvText) {
-  const lines = csvText.trim().split('\n');
-  if (lines.length < 2) return [];
-
-  const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-  const records = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
-    const row = {};
-    headers.forEach((h, idx) => {
-      row[h] = values[idx] || null;
-    });
-    records.push(row);
+  if (!csvText || csvText.trim().length === 0) {
+    return [];
   }
 
-  return records;
+  try {
+    const records = parse(csvText, {
+      columns: true,           // 第一行當作 header
+      skip_empty_lines: true,
+      relax_quotes: true,      // 容許不完整引號
+      relax_column_count: true // 容許欄位數不一致
+    });
+    return records;
+  } catch (error) {
+    console.error(`[WQP] CSV parse error: ${error.message}`);
+    return [];
+  }
 }
 
 /**
- * 從 WQP 取得水質資料（使用 statecode）
+ * 從 WQP 取得水質資料（使用 statecode，改為 30 天範圍避免 timeout）
  */
 export async function fetchWQPResults({ stateCode, startDate, endDate, characteristicType }) {
   const params = {
@@ -104,16 +106,25 @@ export async function fetchWQPResults({ stateCode, startDate, endDate, character
   };
 
   try {
-    console.log(`[WQP] Fetching results for state: ${stateCode}...`);
+    console.log(`[WQP] Fetching ${stateCode} from ${formatWqpDate(startDate)} to ${formatWqpDate(endDate)}...`);
     const response = await axios.get(`${WQP_BASE_URL}/Result/search`, {
       params,
-      timeout: 120000,
+      timeout: 60000,  // 降低 timeout 避免長時間等待
       responseType: 'text'
     });
 
     return parseWQPCSV(response.data);
   } catch (error) {
+    // 印出詳細錯誤資訊
+    const status = error.response?.status;
+    const responseData = error.response?.data;
     console.error(`[WQP] Fetch failed: ${error.message}`);
+    if (status) {
+      console.error(`[WQP] Status: ${status}`);
+    }
+    if (responseData && typeof responseData === 'string') {
+      console.error(`[WQP] Response (first 300 chars): ${responseData.slice(0, 300)}`);
+    }
     return [];
   }
 }
@@ -132,9 +143,9 @@ export async function importWQPToDatabase() {
 
   console.log('[WQP] 開始匯入水質資料...');
 
-  // 計算查詢日期範圍（過去一年）
-  const endDate = new Date().toISOString().slice(0, 10);
-  const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // 改為查詢過去 30 天（避免大州 timeout/500）
+  const endDate = new Date();
+  const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   let totalInserted = 0;
 
@@ -149,36 +160,55 @@ export async function importWQPToDatabase() {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  // 逐州抓取（使用 statecode 更可靠）
+  // 逐州抓取
   for (const state of COASTAL_STATES) {
+    let stateInserted = 0;
+    
     try {
       const results = await fetchWQPResults({
         stateCode: state.code,
-        startDate,
-        endDate,
+        startDate: startDate.toISOString().slice(0, 10),
+        endDate: endDate.toISOString().slice(0, 10),
         characteristicType: 'Nutrient'
       });
 
       if (!results.length) {
-        console.log(`[WQP] ${state.name}: 無資料`);
+        console.log(`[WQP] ${state.name}: 抓取 0 筆`);
         continue;
       }
+
+      console.log(`[WQP] ${state.name}: 抓取 ${results.length} 筆，開始解析...`);
 
       // 限制每州最多 500 筆
       const limitedResults = results.slice(0, 500);
 
       const insertMany = db.transaction((rows) => {
         for (const row of rows) {
-          const lat = parseFloat(row.LatitudeMeasure || row.ActivityLocation_LatitudeMeasure);
-          const lng = parseFloat(row.LongitudeMeasure || row.ActivityLocation_LongitudeMeasure);
-          const value = parseFloat(row.ResultMeasureValue);
+          // 嘗試多種可能的欄位名稱
+          const lat = parseFloat(
+            row.LatitudeMeasure || 
+            row['ActivityLocation/LatitudeMeasure'] ||
+            row.ActivityLocation_LatitudeMeasure
+          );
+          const lng = parseFloat(
+            row.LongitudeMeasure || 
+            row['ActivityLocation/LongitudeMeasure'] ||
+            row.ActivityLocation_LongitudeMeasure
+          );
+          const value = parseFloat(
+            row.ResultMeasureValue ||
+            row['ResultMeasure/MeasureValue']
+          );
 
           if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(value)) {
             continue;
           }
 
-          const recordedAt = row.ActivityStartDate || endDate;
-          const unit = row.ResultMeasure_MeasureUnitCode || row['MeasureUnitCode'] || 'unknown';
+          const recordedAt = row.ActivityStartDate || endDate.toISOString().slice(0, 10);
+          const unit = row['ResultMeasure/MeasureUnitCode'] || 
+                      row.ResultMeasure_MeasureUnitCode || 
+                      row.MeasureUnitCode || 
+                      'unknown';
 
           insertStmt.run(
             'WQP',
@@ -195,19 +225,20 @@ export async function importWQPToDatabase() {
               sampleMedia: row.ActivityMediaName || 'Water',
               organization: row.OrganizationIdentifier,
               siteId: row.MonitoringLocationIdentifier,
-              detectionLimit: row.DetectionQuantitationLimitMeasure_MeasureValue,
+              detectionLimit: row['DetectionQuantitationLimitMeasure/MeasureValue'],
               queryUrl: `${WQP_BASE_URL}/Result/search?statecode=${state.code}`
             })
           );
+          stateInserted++;
           totalInserted++;
         }
       });
 
       insertMany(limitedResults);
-      console.log(`[WQP] ${state.name}: 匯入 ${limitedResults.length} 筆`);
+      console.log(`[WQP] ${state.name}: 成功寫入 ${stateInserted} 筆`);
 
       // 避免 API rate limit
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
     } catch (error) {
       console.error(`[WQP] ${state.name} 匯入失敗:`, error.message);

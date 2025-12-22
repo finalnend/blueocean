@@ -6,7 +6,7 @@
 import getDatabase from '../database/db.js';
 import { WFSClient, getFeatureCoordinates } from './wfsClient.js';
 
-const NPI_WFS_BASE = process.env.NPI_WFS_BASE || 'https://data.gov.au/geoserver/npi/wfs';
+const NPI_WFS_BASE = process.env.NPI_WFS_BASE || 'https://data.gov.au/geoserver/npi/ows';
 
 // NPI 常用圖層（根據實際 GetCapabilities 結果）
 const NPI_LAYERS = {

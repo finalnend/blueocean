@@ -8,17 +8,15 @@ import { WFSClient, getFeatureCoordinates } from './wfsClient.js';
 
 const SPREP_WFS_BASE = process.env.SPREP_WFS_BASE || 'https://geoserver.sprep.org/geoserver/pipap/ows';
 
-// SPREP 常用圖層（使用 pipap 命名空間）
+// SPREP 常用圖層（根據實際 GetCapabilities 結果）
 const SPREP_LAYERS = {
-  // 海洋保護區
-  marine_eez: 'pipap:MarineRegions_EEZ',
-  protected_areas: 'pipap:WDPA_ProtectedAreas',
-  // 太平洋島國邊界
-  pacific_islands: 'pipap:Pacific_Island_Countries',
-  // 珊瑚礁
-  coral_reefs: 'pipap:CoralReefs',
-  // 紅樹林
-  mangroves: 'pipap:Mangroves'
+  // 保護區（使用實際存在的圖層名稱）
+  wdpa_points: 'pipap:World_Database_Protected_Areas_Points',
+  wdpa_polygons: 'pipap:World_Database_Protected_Areas_Polygons',
+  // 太平洋 EEZ
+  pacific_eez: 'pipap:pacific_eez_v11',
+  // 太平洋島國
+  pacific_islands: 'pipap:Pacific_Island_Countries_and_Territories'
 };
 
 const CACHE_KEY = 'sprep_sync_meta';
@@ -127,7 +125,14 @@ export async function importSPREPToDatabase() {
 
   // 先取得可用圖層
   const capabilities = await wfsClient.getCapabilities();
-  console.log(`[SPREP] 可用圖層: ${capabilities.layers?.slice(0, 10).join(', ')}...`);
+  
+  if (!capabilities.success) {
+    console.log(`[SPREP] 無法取得 capabilities: ${capabilities.error}`);
+    saveSyncMeta({ lastSyncedAt: new Date().toISOString() });
+    return 0;
+  }
+  
+  console.log(`[SPREP] 可用圖層 (${capabilities.layers?.length || 0}): ${capabilities.layers?.slice(0, 10).join(', ')}...`);
 
   // 刪除舊資料
   db.prepare(`
@@ -143,8 +148,27 @@ export async function importSPREPToDatabase() {
   let totalInserted = 0;
   const today = new Date().toISOString().slice(0, 10);
 
+  // 優先使用預設圖層，如果失敗則嘗試 capabilities 中的圖層
+  const layersToTry = { ...SPREP_LAYERS };
+  
+  // 從 capabilities 中找出可能有用的圖層（包含 pipap: 前綴的）
+  const availableLayers = capabilities.layers?.filter(l => l.startsWith('pipap:')) || [];
+  
+  // 如果預設圖層都不在 capabilities 中，使用 capabilities 中的前幾個
+  const defaultLayerNames = Object.values(SPREP_LAYERS);
+  const hasDefaultLayers = defaultLayerNames.some(l => availableLayers.includes(l));
+  
+  if (!hasDefaultLayers && availableLayers.length > 0) {
+    console.log('[SPREP] 預設圖層不存在，使用 capabilities 中的圖層');
+    // 清空預設，使用實際存在的
+    Object.keys(layersToTry).forEach(k => delete layersToTry[k]);
+    availableLayers.slice(0, 5).forEach((layer, idx) => {
+      layersToTry[`layer_${idx}`] = layer;
+    });
+  }
+
   // 嘗試抓取各圖層
-  for (const [layerName, typeName] of Object.entries(SPREP_LAYERS)) {
+  for (const [layerName, typeName] of Object.entries(layersToTry)) {
     try {
       console.log(`[SPREP] 查詢 ${layerName} (${typeName})...`);
       
@@ -180,14 +204,17 @@ export async function importSPREPToDatabase() {
 
           // 決定 type
           let type = 'marine_layer';
-          if (layerName.includes('waste') || layerName.includes('pollution')) {
+          const lowerName = layerName.toLowerCase();
+          if (lowerName.includes('waste') || lowerName.includes('pollution')) {
             type = 'coastal_pollution';
-          } else if (layerName.includes('coral')) {
+          } else if (lowerName.includes('coral')) {
             type = 'coral_reef';
-          } else if (layerName.includes('mangrove')) {
+          } else if (lowerName.includes('mangrove')) {
             type = 'mangrove';
-          } else if (layerName.includes('protected')) {
+          } else if (lowerName.includes('protected') || lowerName.includes('wdpa')) {
             type = 'marine_protected_area';
+          } else if (lowerName.includes('eez')) {
+            type = 'exclusive_economic_zone';
           }
 
           insertStmt.run(
@@ -201,10 +228,10 @@ export async function importSPREPToDatabase() {
             JSON.stringify({
               layer: layerName,
               featureId: feature.id || props.id || props.gid,
-              name: props.name || props.site_name || props.area_name,
-              country: props.country || props.country_name || props.nation,
+              name: props.name || props.site_name || props.area_name || props.NAME,
+              country: props.country || props.country_name || props.nation || props.TERRITORY1,
               island: props.island || props.island_name,
-              status: props.status || props.protection_status,
+              status: props.status || props.protection_status || props.STATUS,
               description: props.description || props.notes,
               geometry_type: feature.geometry?.type,
               queryUrl: `${SPREP_WFS_BASE}?typeName=${typeName}`
