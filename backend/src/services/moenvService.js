@@ -149,6 +149,14 @@ const TAIWAN_STATIONS = {
  * 嘗試從測站名稱取得座標
  */
 function getStationCoords(stationName) {
+  // 預設台灣中心點
+  const defaultCoord = { lat: 23.5, lng: 121.0 };
+  
+  // null guard - 確保 stationName 是字串
+  if (typeof stationName !== 'string') {
+    return defaultCoord;
+  }
+  
   // 直接匹配
   if (TAIWAN_STATIONS[stationName]) {
     return TAIWAN_STATIONS[stationName];
@@ -161,8 +169,7 @@ function getStationCoords(stationName) {
     }
   }
   
-  // 預設台灣中心點
-  return { lat: 23.5, lng: 121.0 };
+  return defaultCoord;
 }
 
 /**

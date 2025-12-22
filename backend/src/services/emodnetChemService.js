@@ -8,12 +8,14 @@ import getDatabase from '../database/db.js';
 
 // EMODnet ERDDAP 端點（多個備用）
 const ERDDAP_ENDPOINTS = [
-  'https://erddap.emodnet-chemistry.eu/erddap',
-  'https://erddap.emodnet.eu/erddap',
-  'https://erddap.emodnet-physics.eu/erddap'
+  'https://erddap.emodnet-physics.eu/erddap',
+  'https://erddap.emodnet.eu/erddap'
 ];
 
-// 簡化：直接使用 EMODnet Physics 的即時資料（更穩定）
+// 預設 ERDDAP URL（用於 meta 資訊）
+const ERDDAP_BASE_URL = ERDDAP_ENDPOINTS[0];
+
+// EMODnet Physics 的即時資料集（更穩定）
 const PHYSICS_DATASETS = [
   { id: 'EP_PLATFORMS_METADATA', name: 'Platforms', type: 'chemistry' }
 ];
@@ -64,12 +66,34 @@ function isRecentlyChecked(meta) {
 }
 
 /**
+ * 檢查 ERDDAP 端點是否可用
+ */
+async function checkERDDAPHealth(baseUrl) {
+  try {
+    const response = await axios.get(`${baseUrl}/search/index.json?searchFor=temperature`, {
+      timeout: 10000
+    });
+    return response.status === 200;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 從 ERDDAP tabledap 取得資料（嘗試多個端點）
  */
 export async function fetchChemistryFromERDDAP(datasetId, constraints = {}) {
+  // 選擇適當的變數（避免請求不存在的欄位）
   const variables = 'latitude,longitude,time';
   
   for (const baseUrl of ERDDAP_ENDPOINTS) {
+    // 先檢查端點健康狀態
+    const isHealthy = await checkERDDAPHealth(baseUrl);
+    if (!isHealthy) {
+      console.log(`[EMODnet] ${baseUrl} health check failed, skipping...`);
+      continue;
+    }
+
     let url = `${baseUrl}/tabledap/${datasetId}.json?${variables}`;
     
     if (constraints.minLat && constraints.maxLat) {
@@ -80,11 +104,14 @@ export async function fetchChemistryFromERDDAP(datasetId, constraints = {}) {
     }
 
     try {
-      console.log(`[EMODnet] Trying: ${baseUrl}...`);
+      console.log(`[EMODnet] Fetching from ERDDAP: ${datasetId}...`);
       const response = await axios.get(url, { timeout: 30000 });
       
       const table = response.data?.table;
-      if (!table?.rows || table.rows.length === 0) continue;
+      if (!table?.rows || table.rows.length === 0) {
+        console.log(`[EMODnet] Dataset ${datasetId}: 無資料或不存在`);
+        continue;
+      }
 
       const columnNames = table.columnNames;
       return table.rows.slice(0, 500).map(row => {
@@ -95,7 +122,7 @@ export async function fetchChemistryFromERDDAP(datasetId, constraints = {}) {
         return record;
       });
     } catch (error) {
-      console.log(`[EMODnet] ${baseUrl} failed: ${error.message}`);
+      console.log(`[EMODnet] ${baseUrl}/${datasetId} failed: ${error.message}`);
       continue;
     }
   }

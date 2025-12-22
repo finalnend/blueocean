@@ -5,46 +5,57 @@
 import axios from 'axios';
 
 /**
- * WFS 客戶端類別
+ * WFS 客戶端類別 - 支援版本自動降級
  */
 export class WFSClient {
   constructor(baseUrl, options = {}) {
     this.baseUrl = baseUrl;
-    this.version = options.version || '2.0.0';
+    this.preferredVersion = options.version || '2.0.0';
+    this.version = this.preferredVersion;
     this.timeout = options.timeout || 60000;
     this.defaultOutputFormat = options.outputFormat || 'application/json';
+    // 版本降級順序
+    this.versionFallback = ['2.0.0', '1.1.0', '1.0.0'];
   }
 
   /**
-   * 取得服務能力（列出可用圖層）
+   * 取得服務能力（列出可用圖層）- 支援版本降級
    */
   async getCapabilities() {
-    try {
-      const response = await axios.get(this.baseUrl, {
-        params: {
-          service: 'WFS',
-          version: this.version,
-          request: 'GetCapabilities'
-        },
-        timeout: this.timeout,
-        responseType: 'text'
-      });
+    for (const version of this.versionFallback) {
+      try {
+        const response = await axios.get(this.baseUrl, {
+          params: {
+            service: 'WFS',
+            version: version,
+            request: 'GetCapabilities'
+          },
+          timeout: this.timeout,
+          responseType: 'text'
+        });
 
-      // 解析 XML 取得圖層列表（簡化版）
-      const layerMatches = response.data.match(/<Name>([^<]+)<\/Name>/g) || [];
-      const layers = layerMatches
-        .map(m => m.replace(/<\/?Name>/g, ''))
-        .filter(name => !name.includes(':') || name.split(':').length === 2);
+        // 解析 XML 取得圖層列表（簡化版）
+        const layerMatches = response.data.match(/<Name>([^<]+)<\/Name>/g) || [];
+        const layers = layerMatches
+          .map(m => m.replace(/<\/?Name>/g, ''))
+          .filter(name => !name.includes(':') || name.split(':').length === 2);
 
-      return {
-        success: true,
-        version: this.version,
-        layers: [...new Set(layers)]
-      };
-    } catch (error) {
-      console.error(`[WFS] GetCapabilities failed: ${error.message}`);
-      return { success: false, error: error.message, layers: [] };
+        // 成功後更新使用的版本
+        this.version = version;
+        console.log(`[WFS] Using version ${version} for ${this.baseUrl}`);
+
+        return {
+          success: true,
+          version: version,
+          layers: [...new Set(layers)]
+        };
+      } catch (error) {
+        console.log(`[WFS] GetCapabilities v${version} failed: ${error.message}`);
+        continue;
+      }
     }
+    
+    return { success: false, error: 'All WFS versions failed', layers: [] };
   }
 
   /**
@@ -81,7 +92,7 @@ export class WFSClient {
   }
 
   /**
-   * 取得圖層資料（GeoJSON）
+   * 取得圖層資料（GeoJSON）- 支援版本降級和參數自動調整
    */
   async getFeatures(typeName, options = {}) {
     const {
@@ -92,51 +103,66 @@ export class WFSClient {
       srsName = 'EPSG:4326'
     } = options;
 
-    const params = {
-      service: 'WFS',
-      version: this.version,
-      request: 'GetFeature',
-      typeName: typeName,
-      outputFormat: this.defaultOutputFormat,
-      count: count,
-      startIndex: startIndex,
-      srsName: srsName
-    };
+    // 嘗試不同版本
+    for (const version of this.versionFallback) {
+      const params = {
+        service: 'WFS',
+        version: version,
+        request: 'GetFeature',
+        outputFormat: this.defaultOutputFormat,
+        srsName: srsName
+      };
 
-    if (bbox) {
-      params.bbox = Array.isArray(bbox) ? bbox.join(',') : bbox;
-    }
+      // WFS 1.x 使用 typeName，WFS 2.0 使用 typeNames
+      if (version === '2.0.0') {
+        params.typeNames = typeName;
+        params.count = count;
+        params.startIndex = startIndex;
+      } else {
+        params.typeName = typeName;
+        params.maxFeatures = count;
+      }
 
-    if (cqlFilter) {
-      params.CQL_FILTER = cqlFilter;
-    }
+      if (bbox) {
+        params.bbox = Array.isArray(bbox) ? bbox.join(',') : bbox;
+      }
 
-    try {
-      const response = await axios.get(this.baseUrl, {
-        params,
-        timeout: this.timeout
-      });
+      if (cqlFilter) {
+        params.CQL_FILTER = cqlFilter;
+      }
 
-      // 處理 GeoJSON 回應
-      if (response.data?.type === 'FeatureCollection') {
+      try {
+        const response = await axios.get(this.baseUrl, {
+          params,
+          timeout: this.timeout
+        });
+
+        // 處理 GeoJSON 回應
+        if (response.data?.type === 'FeatureCollection') {
+          this.version = version; // 記住成功的版本
+          return {
+            success: true,
+            typeName,
+            version,
+            count: response.data.features?.length || 0,
+            features: response.data.features || []
+          };
+        }
+
+        // 處理其他格式
         return {
           success: true,
           typeName,
-          count: response.data.features?.length || 0,
-          features: response.data.features || []
+          version,
+          data: response.data
         };
+      } catch (error) {
+        console.log(`[WFS] GetFeature v${version} failed for ${typeName}: ${error.message}`);
+        continue;
       }
-
-      // 處理其他格式
-      return {
-        success: true,
-        typeName,
-        data: response.data
-      };
-    } catch (error) {
-      console.error(`[WFS] GetFeature failed: ${error.message}`);
-      return { success: false, error: error.message, features: [] };
     }
+
+    return { success: false, error: 'All WFS versions failed', features: [] };
   }
 
   /**

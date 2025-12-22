@@ -8,24 +8,7 @@ import getDatabase from '../database/db.js';
 
 const WQP_BASE_URL = 'https://www.waterqualitydata.us/data';
 
-// 預設查詢的水質參數（可擴充）
-const DEFAULT_CHARACTERISTICS = [
-  'Nitrogen',
-  'Phosphorus',
-  'Dissolved oxygen (DO)',
-  'Mercury',
-  'Lead',
-  'pH'
-];
-
-// 預設近岸區域 bbox（格式: 西經,南緯,東經,北緯）
-const COASTAL_REGIONS = {
-  us_east_coast: { bBox: '-82,24,-65,45', name: 'US East Coast' },
-  us_west_coast: { bBox: '-130,32,-117,49', name: 'US West Coast' },
-  gulf_of_mexico: { bBox: '-98,18,-80,31', name: 'Gulf of Mexico' }
-};
-
-// 使用 statecode 替代 bBox（更可靠）
+// 使用 statecode（更可靠）
 const COASTAL_STATES = [
   { code: 'US:06', name: 'California' },
   { code: 'US:12', name: 'Florida' },
@@ -33,6 +16,17 @@ const COASTAL_STATES = [
   { code: 'US:48', name: 'Texas' },
   { code: 'US:25', name: 'Massachusetts' }
 ];
+
+/**
+ * 將日期轉換為 WQP 格式 (MM-DD-YYYY)
+ */
+function formatWqpDate(date) {
+  const d = new Date(date);
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${month}-${day}-${year}`;
+}
 
 const CACHE_KEY = 'wqp_sync_meta';
 const STALE_WINDOW_HOURS = 24;
@@ -102,8 +96,8 @@ export async function fetchWQPResults({ stateCode, startDate, endDate, character
     zip: 'no',
     sorted: 'no',
     statecode: stateCode,
-    startDateLo: startDate,
-    startDateHi: endDate,
+    startDateLo: formatWqpDate(startDate),
+    startDateHi: formatWqpDate(endDate),
     characteristicType: characteristicType || 'Nutrient',
     sampleMedia: 'Water',
     dataProfile: 'narrowResult'

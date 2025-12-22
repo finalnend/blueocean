@@ -97,11 +97,14 @@ export async function fetchEchoFacilitiesByQid(qid) {
   }
 }
 
+// ArcGIS FeatureServer 備用端點
+const ARCGIS_ECHO_URL = 'https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/EPA_ECHO_Facilities/FeatureServer/0/query';
+
 /**
- * 直接查詢設施（使用 Envirofacts API 作為備用）
+ * 直接查詢設施（使用 Envirofacts API 和 ArcGIS 作為備用）
  */
 async function fetchFacilitiesDirect(state) {
-  // 先嘗試 ECHO API
+  // 先嘗試 ECHO API（降低 responseset 避免 500 錯誤）
   try {
     const response = await axios.get(`${ECHO_BASE_URL}/cwa_rest_services.get_facilities`, {
       params: {
@@ -109,7 +112,7 @@ async function fetchFacilitiesDirect(state) {
         p_st: state,
         p_med: 'W',
         p_ptype: 'NPD',
-        responseset: 200
+        responseset: 100  // 降低到 100 避免 500 錯誤
       },
       timeout: 30000
     });
@@ -119,10 +122,37 @@ async function fetchFacilitiesDirect(state) {
       return facilities;
     }
   } catch (error) {
-    console.error(`[ECHO] ${state} ECHO API failed: ${error.message}`);
+    console.log(`[ECHO] ${state} ECHO API failed: ${error.message}`);
   }
 
-  // 備用：使用 Envirofacts NPDES_PERMITS
+  // 備用方案 1：ArcGIS FeatureServer
+  try {
+    console.log(`[ECHO] ${state} 嘗試 ArcGIS FeatureServer...`);
+    const response = await axios.get(ARCGIS_ECHO_URL, {
+      params: {
+        where: `STATE='${state}'`,
+        outFields: 'FAC_NAME,FAC_LAT,FAC_LONG,FAC_CITY,FAC_COUNTY,NPDES_IDS',
+        f: 'json',
+        resultRecordCount: 100
+      },
+      timeout: 30000
+    });
+
+    if (response.data?.features?.length > 0) {
+      return response.data.features.map(f => ({
+        FacLat: f.attributes.FAC_LAT,
+        FacLong: f.attributes.FAC_LONG,
+        FacName: f.attributes.FAC_NAME,
+        SourceID: f.attributes.NPDES_IDS,
+        FacCity: f.attributes.FAC_CITY,
+        FacCounty: f.attributes.FAC_COUNTY
+      }));
+    }
+  } catch (error) {
+    console.log(`[ECHO] ${state} ArcGIS failed: ${error.message}`);
+  }
+
+  // 備用方案 2：Envirofacts NPDES_PERMITS
   try {
     console.log(`[ECHO] ${state} 嘗試 Envirofacts API...`);
     const response = await axios.get(
@@ -142,7 +172,7 @@ async function fetchFacilitiesDirect(state) {
       }));
     }
   } catch (error) {
-    console.error(`[ECHO] ${state} Envirofacts failed: ${error.message}`);
+    console.log(`[ECHO] ${state} Envirofacts failed: ${error.message}`);
   }
 
   return [];

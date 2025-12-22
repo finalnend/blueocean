@@ -8,24 +8,25 @@ import { WFSClient, getFeatureCoordinates } from './wfsClient.js';
 
 const SPREP_WFS_BASE = process.env.SPREP_WFS_BASE || 'https://geoserver.sprep.org/geoserver/pipap/ows';
 
-// SPREP 常用圖層（需根據 GetCapabilities 確認實際名稱）
+// SPREP 常用圖層（使用 pipap 命名空間）
 const SPREP_LAYERS = {
-  // 海岸/海洋相關圖層
-  coastal_areas: 'geonode:coastal_areas',
-  marine_protected: 'geonode:marine_protected_areas',
-  coral_reefs: 'geonode:coral_reefs',
-  mangroves: 'geonode:mangroves',
-  // 污染/廢棄物相關
-  waste_sites: 'geonode:waste_disposal_sites',
-  pollution_sources: 'geonode:pollution_sources'
+  // 海洋保護區
+  marine_eez: 'pipap:MarineRegions_EEZ',
+  protected_areas: 'pipap:WDPA_ProtectedAreas',
+  // 太平洋島國邊界
+  pacific_islands: 'pipap:Pacific_Island_Countries',
+  // 珊瑚礁
+  coral_reefs: 'pipap:CoralReefs',
+  // 紅樹林
+  mangroves: 'pipap:Mangroves'
 };
 
 const CACHE_KEY = 'sprep_sync_meta';
 const STALE_WINDOW_HOURS = 24;
 
-// 建立 WFS 客戶端
+// 建立 WFS 客戶端（使用 1.0.0 版本，SPREP 不支援 2.0.0）
 const wfsClient = new WFSClient(SPREP_WFS_BASE, {
-  version: '2.0.0',
+  version: '1.0.0',
   timeout: 120000
 });
 
@@ -84,9 +85,9 @@ export async function fetchSPREPLayer(layerName, options = {}) {
   // 嘗試預設圖層名稱
   let typeName = SPREP_LAYERS[layerName] || layerName;
   
-  // 如果不是完整名稱，加上 geonode: 前綴
+  // 如果不是完整名稱，加上 pipap: 前綴
   if (!typeName.includes(':')) {
-    typeName = `geonode:${typeName}`;
+    typeName = `pipap:${typeName}`;
   }
 
   return await wfsClient.getFeatures(typeName, {

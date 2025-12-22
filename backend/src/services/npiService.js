@@ -8,19 +8,19 @@ import { WFSClient, getFeatureCoordinates } from './wfsClient.js';
 
 const NPI_WFS_BASE = process.env.NPI_WFS_BASE || 'https://data.gov.au/geoserver/npi/wfs';
 
-// NPI 常用圖層（需根據 GetCapabilities 確認實際名稱）
+// NPI 常用圖層（根據實際 GetCapabilities 結果）
 const NPI_LAYERS = {
-  facilities: 'npi:npi_facilities',
-  emissions: 'npi:npi_emissions',
-  water_emissions: 'npi:npi_water_emissions'
+  facilities: 'npi:Facilities_KMZ0',
+  emissions: 'npi:Emissions_KMZ0',
+  substances: 'npi:Substances_KMZ0'
 };
 
 const CACHE_KEY = 'npi_sync_meta';
 const STALE_WINDOW_HOURS = 24;
 
-// 建立 WFS 客戶端
+// 建立 WFS 客戶端（使用 1.0.0 版本，data.gov.au 不支援 2.0.0）
 const wfsClient = new WFSClient(NPI_WFS_BASE, {
-  version: '2.0.0',
+  version: '1.0.0',
   timeout: 120000
 });
 
