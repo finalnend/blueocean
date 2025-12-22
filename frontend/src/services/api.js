@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5875';
+// 生產環境使用相對路徑（通過 nginx 代理），開發環境使用完整 URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.PROD ? '' : 'http://localhost:5875');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
