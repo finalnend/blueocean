@@ -21,6 +21,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy when behind nginx/reverse proxy (required for rate limiting)
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 function repairSeededResourceLinks() {
   if (process.env.NODE_ENV === 'test') return;
 
