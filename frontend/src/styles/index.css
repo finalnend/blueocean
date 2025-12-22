@@ -90,3 +90,47 @@
 .btn-outline {
   @apply border-2 border-ocean-blue-500 text-ocean-blue-500 hover:bg-ocean-blue-500 hover:text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200;
 }
+
+
+/* Marker Cluster 樣式 */
+.marker-cluster {
+  @apply rounded-full flex items-center justify-center font-bold text-white shadow-lg;
+  background-clip: padding-box;
+}
+
+.marker-cluster div {
+  @apply w-8 h-8 rounded-full flex items-center justify-center;
+}
+
+.marker-cluster span {
+  @apply text-xs;
+}
+
+.marker-cluster-small {
+  background-color: rgba(16, 185, 129, 0.7);
+}
+
+.marker-cluster-small div {
+  background-color: rgba(16, 185, 129, 0.9);
+}
+
+.marker-cluster-medium {
+  background-color: rgba(245, 158, 11, 0.7);
+}
+
+.marker-cluster-medium div {
+  background-color: rgba(245, 158, 11, 0.9);
+}
+
+.marker-cluster-large {
+  background-color: rgba(220, 38, 38, 0.7);
+}
+
+.marker-cluster-large div {
+  background-color: rgba(220, 38, 38, 0.9);
+}
+
+/* 熱力圖圖例 */
+.heatmap-legend {
+  @apply absolute bottom-4 right-4 bg-white dark:bg-gray-800 rounded-lg p-3 shadow-lg z-[1000];
+}

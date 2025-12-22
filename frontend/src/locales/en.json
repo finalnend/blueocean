@@ -65,6 +65,12 @@
         "howToUse": "How to Use",
         "mapInstruction": "Click on map markers to view detailed data",
         "source": "Source",
+        "displayMode": "Display Mode",
+        "modes": {
+            "heatmap": "Heatmap",
+            "cluster": "Clusters",
+            "markers": "Points"
+        },
         "types": {
             "plastic": "Plastic",
             "microplastic": "Microplastic",

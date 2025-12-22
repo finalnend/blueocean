@@ -65,6 +65,12 @@
     "howToUse": "如何使用",
     "mapInstruction": "點擊地圖上的標記查看詳細數據",
     "source": "來源",
+    "displayMode": "顯示模式",
+    "modes": {
+      "heatmap": "熱力圖",
+      "cluster": "聚合點",
+      "markers": "單點"
+    },
     "types": {
       "plastic": "塑膠",
       "microplastic": "微塑膠",

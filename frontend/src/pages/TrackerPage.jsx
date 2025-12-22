@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents } from 'react-leaflet';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import { useTranslation } from 'react-i18next';
+import L from 'leaflet';
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import 'leaflet.heat';
 import { getMapData, getPollutionTypes, getTimeSeries } from '../services/pollutionService';
 import { getLocationEnvironmentData, getCoordinatesFromMapEvent, getTrackerSources } from '../services/trackerService';
 import TimeSeriesChart from '../components/TimeSeriesChart';
@@ -27,6 +32,9 @@ export default function TrackerPage() {
   
   // 動態污染類型列表
   const [pollutionTypes, setPollutionTypes] = useState([]);
+  
+  // 地圖顯示模式: 'markers' | 'heatmap' | 'cluster'
+  const [displayMode, setDisplayMode] = useState('heatmap');
   
   useEffect(() => {
     loadMapData();
@@ -158,6 +166,139 @@ export default function TrackerPage() {
     return null;
   }
   
+  // 熱力圖層組件
+  function HeatmapLayer({ data, selectedType }) {
+    const map = useMap();
+    const heatLayerRef = useRef(null);
+    
+    useEffect(() => {
+      if (!data?.features?.length) return;
+      
+      // 移除舊的熱力圖層
+      if (heatLayerRef.current) {
+        map.removeLayer(heatLayerRef.current);
+      }
+      
+      // 準備熱力圖數據 [lat, lng, intensity]
+      const heatData = data.features
+        .filter(f => f.geometry?.coordinates)
+        .map(f => {
+          const [lng, lat] = f.geometry.coordinates;
+          // 根據值計算強度 (0-1)
+          const intensity = Math.min(f.properties.value / 2000, 1);
+          return [lat, lng, intensity];
+        });
+      
+      if (heatData.length > 0) {
+        // 根據類型選擇漸變色
+        const gradients = {
+          plastic: { 0.4: '#10b981', 0.65: '#f59e0b', 1: '#dc2626' },
+          microplastic: { 0.4: '#c4b5fd', 0.65: '#a855f7', 1: '#9333ea' },
+          water_quality: { 0.4: '#7dd3fc', 0.65: '#0ea5e9', 1: '#0369a1' },
+          pollution_source: { 0.4: '#fca5a5', 0.65: '#ef4444', 1: '#b91c1c' },
+          chemistry: { 0.4: '#5eead4', 0.65: '#14b8a6', 1: '#0f766e' },
+          contaminant: { 0.4: '#fdba74', 0.65: '#f97316', 1: '#c2410c' },
+          emission: { 0.4: '#a5b4fc', 0.65: '#6366f1', 1: '#4338ca' },
+        };
+        
+        heatLayerRef.current = L.heatLayer(heatData, {
+          radius: 25,
+          blur: 15,
+          maxZoom: 10,
+          max: 1.0,
+          gradient: gradients[selectedType] || gradients.plastic
+        }).addTo(map);
+      }
+      
+      return () => {
+        if (heatLayerRef.current) {
+          map.removeLayer(heatLayerRef.current);
+        }
+      };
+    }, [data, map, selectedType]);
+    
+    return null;
+  }
+  
+  // 聚合標記層組件
+  function ClusterLayer({ data, selectedType, getMarkerColor, t }) {
+    const map = useMap();
+    const clusterGroupRef = useRef(null);
+    
+    useEffect(() => {
+      if (!data?.features?.length) return;
+      
+      // 移除舊的聚合層
+      if (clusterGroupRef.current) {
+        map.removeLayer(clusterGroupRef.current);
+      }
+      
+      // 建立聚合群組
+      clusterGroupRef.current = L.markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        iconCreateFunction: (cluster) => {
+          const count = cluster.getChildCount();
+          let size = 'small';
+          let className = 'marker-cluster-small';
+          
+          if (count > 100) {
+            size = 'large';
+            className = 'marker-cluster-large';
+          } else if (count > 10) {
+            size = 'medium';
+            className = 'marker-cluster-medium';
+          }
+          
+          return L.divIcon({
+            html: `<div><span>${count}</span></div>`,
+            className: `marker-cluster ${className}`,
+            iconSize: L.point(40, 40)
+          });
+        }
+      });
+      
+      // 添加標記到聚合群組
+      data.features.forEach((feature) => {
+        if (!feature.geometry?.coordinates) return;
+        
+        const [lng, lat] = feature.geometry.coordinates;
+        const color = getMarkerColor(feature.properties.value, selectedType);
+        
+        const marker = L.circleMarker([lat, lng], {
+          radius: 8,
+          fillColor: color,
+          color: '#fff',
+          weight: 2,
+          fillOpacity: 0.7
+        });
+        
+        marker.bindPopup(`
+          <div class="text-sm">
+            <strong>${t('tracker.value')}:</strong> ${feature.properties.value.toFixed(2)} ${feature.properties.unit}<br/>
+            <strong>${t('tracker.region')}:</strong> ${feature.properties.region || 'N/A'}<br/>
+            <strong>${t('tracker.date')}:</strong> ${feature.properties.recordedAt}<br/>
+            <strong>${t('tracker.source', '來源')}:</strong> ${feature.properties.source || 'N/A'}
+          </div>
+        `);
+        
+        clusterGroupRef.current.addLayer(marker);
+      });
+      
+      map.addLayer(clusterGroupRef.current);
+      
+      return () => {
+        if (clusterGroupRef.current) {
+          map.removeLayer(clusterGroupRef.current);
+        }
+      };
+    }, [data, map, selectedType, getMarkerColor, t]);
+    
+    return null;
+  }
+  
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
@@ -240,7 +381,32 @@ export default function TrackerPage() {
           </div>
           
           {/* 切換圖表顯示 */}
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            {/* 地圖顯示模式 */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{t('tracker.displayMode')}:</span>
+              <div className="flex rounded-lg overflow-hidden border">
+                <button
+                  onClick={() => setDisplayMode('heatmap')}
+                  className={`px-3 py-1 text-sm ${displayMode === 'heatmap' ? 'bg-ocean-blue-600 text-white' : 'bg-white dark:bg-gray-800'}`}
+                >
+                  🔥 {t('tracker.modes.heatmap')}
+                </button>
+                <button
+                  onClick={() => setDisplayMode('cluster')}
+                  className={`px-3 py-1 text-sm border-l ${displayMode === 'cluster' ? 'bg-ocean-blue-600 text-white' : 'bg-white dark:bg-gray-800'}`}
+                >
+                  📍 {t('tracker.modes.cluster')}
+                </button>
+                <button
+                  onClick={() => setDisplayMode('markers')}
+                  className={`px-3 py-1 text-sm border-l ${displayMode === 'markers' ? 'bg-ocean-blue-600 text-white' : 'bg-white dark:bg-gray-800'}`}
+                >
+                  ⚫ {t('tracker.modes.markers')}
+                </button>
+              </div>
+            </div>
+            
             <button 
               onClick={() => setShowCharts(!showCharts)}
               className="btn-outline text-sm"
@@ -276,7 +442,24 @@ export default function TrackerPage() {
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   />
                   <MapClickHandler />
-                  {mapData?.features?.map((feature, idx) => (
+                  
+                  {/* 熱力圖模式 */}
+                  {displayMode === 'heatmap' && mapData?.features?.length > 0 && (
+                    <HeatmapLayer data={mapData} selectedType={selectedType} />
+                  )}
+                  
+                  {/* 聚合標記模式 */}
+                  {displayMode === 'cluster' && mapData?.features?.length > 0 && (
+                    <ClusterLayer 
+                      data={mapData} 
+                      selectedType={selectedType} 
+                      getMarkerColor={getMarkerColor}
+                      t={t}
+                    />
+                  )}
+                  
+                  {/* 單點標記模式 */}
+                  {displayMode === 'markers' && mapData?.features?.map((feature, idx) => (
                     <CircleMarker
                       key={idx}
                       center={[
