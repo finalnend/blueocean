@@ -36,45 +36,6 @@ const samplePollutionData = [
   // 微塑膠資料
   ['Research', 'microplastic', 25.0, -80.0, 45.2, 'particles/m³', '2024-01-01', JSON.stringify({ region: 'Caribbean' })],
   ['Research', 'microplastic', 51.5, -0.1, 38.7, 'particles/m³', '2024-01-01', JSON.stringify({ region: 'North Sea' })],
-  
-  // ========== 水質監測資料 ==========
-  // 台灣水質監測站
-  ['MOENV (TW)', 'water_quality', 25.0478, 121.5319, 7.2, 'pH', '2024-12-01', JSON.stringify({ region: '台北', stationName: '淡水河-關渡', parameter: 'pH值', county: '台北市' })],
-  ['MOENV (TW)', 'water_quality', 25.1333, 121.7500, 6.8, 'mg/L', '2024-12-01', JSON.stringify({ region: '基隆', stationName: '基隆港', parameter: '溶氧量', county: '基隆市' })],
-  ['MOENV (TW)', 'water_quality', 24.1477, 120.6736, 7.5, 'pH', '2024-12-01', JSON.stringify({ region: '台中', stationName: '台中港', parameter: 'pH值', county: '台中市' })],
-  ['MOENV (TW)', 'water_quality', 22.6167, 120.2667, 7.1, 'pH', '2024-12-01', JSON.stringify({ region: '高雄', stationName: '高雄港', parameter: 'pH值', county: '高雄市' })],
-  ['MOENV (TW)', 'water_quality', 23.9833, 121.6167, 8.2, 'mg/L', '2024-12-01', JSON.stringify({ region: '花蓮', stationName: '花蓮港', parameter: '溶氧量', county: '花蓮縣' })],
-  ['MOENV (TW)', 'water_quality', 22.7500, 121.1500, 7.8, 'pH', '2024-12-01', JSON.stringify({ region: '台東', stationName: '台東海域', parameter: 'pH值', county: '台東縣' })],
-  ['MOENV (TW)', 'water_quality', 24.8000, 121.0000, 6.5, 'mg/L', '2024-12-01', JSON.stringify({ region: '新竹', stationName: '新竹海域', parameter: '溶氧量', county: '新竹市' })],
-  ['MOENV (TW)', 'water_quality', 23.4800, 120.4500, 7.3, 'pH', '2024-12-01', JSON.stringify({ region: '嘉義', stationName: '布袋港', parameter: 'pH值', county: '嘉義縣' })],
-  ['MOENV (TW)', 'water_quality', 23.0000, 120.2000, 7.0, 'pH', '2024-12-01', JSON.stringify({ region: '台南', stationName: '安平港', parameter: 'pH值', county: '台南市' })],
-  ['MOENV (TW)', 'water_quality', 24.2500, 120.5200, 6.9, 'mg/L', '2024-12-01', JSON.stringify({ region: '彰化', stationName: '彰化海域', parameter: '溶氧量', county: '彰化縣' })],
-  
-  // 美國水質監測站 (WQP)
-  ['WQP', 'water_quality', 37.7749, -122.4194, 7.8, 'pH', '2024-12-01', JSON.stringify({ region: 'California', stationName: 'San Francisco Bay', parameter: 'pH', state: 'CA' })],
-  ['WQP', 'water_quality', 25.7617, -80.1918, 8.1, 'pH', '2024-12-01', JSON.stringify({ region: 'Florida', stationName: 'Miami Beach', parameter: 'pH', state: 'FL' })],
-  ['WQP', 'water_quality', 40.7128, -74.0060, 7.2, 'pH', '2024-12-01', JSON.stringify({ region: 'New York', stationName: 'Hudson River', parameter: 'pH', state: 'NY' })],
-  ['WQP', 'water_quality', 29.7604, -95.3698, 7.5, 'pH', '2024-12-01', JSON.stringify({ region: 'Texas', stationName: 'Houston Ship Channel', parameter: 'pH', state: 'TX' })],
-  ['WQP', 'water_quality', 42.3601, -71.0589, 7.6, 'pH', '2024-12-01', JSON.stringify({ region: 'Massachusetts', stationName: 'Boston Harbor', parameter: 'pH', state: 'MA' })],
-  ['WQP', 'water_quality', 33.7490, -84.3880, 7.4, 'mg/L', '2024-12-01', JSON.stringify({ region: 'Georgia', stationName: 'Chattahoochee River', parameter: 'DO', state: 'GA' })],
-  ['WQP', 'water_quality', 47.6062, -122.3321, 8.5, 'mg/L', '2024-12-01', JSON.stringify({ region: 'Washington', stationName: 'Puget Sound', parameter: 'DO', state: 'WA' })],
-  ['WQP', 'water_quality', 32.7157, -117.1611, 8.0, 'pH', '2024-12-01', JSON.stringify({ region: 'California', stationName: 'San Diego Bay', parameter: 'pH', state: 'CA' })],
-  
-  // 歐洲水質監測站 (EMODnet)
-  ['EMODnet', 'water_quality', 51.5074, -0.1278, 7.9, 'pH', '2024-12-01', JSON.stringify({ region: 'UK', stationName: 'Thames Estuary', parameter: 'pH', country: 'United Kingdom' })],
-  ['EMODnet', 'water_quality', 48.8566, 2.3522, 7.3, 'pH', '2024-12-01', JSON.stringify({ region: 'France', stationName: 'Seine River', parameter: 'pH', country: 'France' })],
-  ['EMODnet', 'water_quality', 52.5200, 13.4050, 7.1, 'mg/L', '2024-12-01', JSON.stringify({ region: 'Germany', stationName: 'Spree River', parameter: 'DO', country: 'Germany' })],
-  ['EMODnet', 'water_quality', 41.9028, 12.4964, 7.6, 'pH', '2024-12-01', JSON.stringify({ region: 'Italy', stationName: 'Tiber River', parameter: 'pH', country: 'Italy' })],
-  ['EMODnet', 'water_quality', 59.3293, 18.0686, 7.8, 'pH', '2024-12-01', JSON.stringify({ region: 'Sweden', stationName: 'Stockholm Archipelago', parameter: 'pH', country: 'Sweden' })],
-  ['EMODnet', 'water_quality', 55.6761, 12.5683, 8.0, 'mg/L', '2024-12-01', JSON.stringify({ region: 'Denmark', stationName: 'Copenhagen Harbor', parameter: 'DO', country: 'Denmark' })],
-  
-  // 亞太水質監測站
-  ['Korea Marine', 'water_quality', 37.5665, 126.9780, 7.4, 'pH', '2024-12-01', JSON.stringify({ region: 'South Korea', stationName: 'Han River', parameter: 'pH', country: 'South Korea' })],
-  ['Korea Marine', 'water_quality', 35.1796, 129.0756, 8.1, 'pH', '2024-12-01', JSON.stringify({ region: 'South Korea', stationName: 'Busan Harbor', parameter: 'pH', country: 'South Korea' })],
-  ['SPREP', 'water_quality', -17.7134, 178.0650, 8.3, 'pH', '2024-12-01', JSON.stringify({ region: 'Fiji', stationName: 'Suva Harbor', parameter: 'pH', country: 'Fiji' })],
-  ['SPREP', 'water_quality', -13.8333, -171.7500, 8.2, 'pH', '2024-12-01', JSON.stringify({ region: 'Samoa', stationName: 'Apia Harbor', parameter: 'pH', country: 'Samoa' })],
-  ['NPI (AU)', 'water_quality', -33.8688, 151.2093, 7.7, 'pH', '2024-12-01', JSON.stringify({ region: 'Australia', stationName: 'Sydney Harbor', parameter: 'pH', country: 'Australia' })],
-  ['NPI (AU)', 'water_quality', -37.8136, 144.9631, 7.5, 'pH', '2024-12-01', JSON.stringify({ region: 'Australia', stationName: 'Melbourne Bay', parameter: 'pH', country: 'Australia' })],
 ];
 
 const insertMany = db.transaction((data) => {
