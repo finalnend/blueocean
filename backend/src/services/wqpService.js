@@ -143,9 +143,9 @@ export async function importWQPToDatabase() {
 
   console.log('[WQP] 開始匯入水質資料...');
 
-  // 改為查詢過去 30 天（避免大州 timeout/500）
+  // 改為查詢過去 2 天（避免大州 timeout/500）
   const endDate = new Date();
-  const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const startDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 
   let totalInserted = 0;
 
