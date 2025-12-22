@@ -71,7 +71,7 @@ export const getMapData = (req, res) => {
     const { type = 'plastic', from, to, bbox } = req.query;
 
     let query = `
-      SELECT id, lat, lng, value, unit, recorded_at, meta
+      SELECT id, lat, lng, value, unit, recorded_at, meta, source
       FROM pollution_data
       WHERE type = ?
     `;
@@ -90,32 +90,37 @@ export const getMapData = (req, res) => {
       params.push(minLat, maxLat, minLng, maxLng);
     }
 
-    query += ` LIMIT 1000`; // limit response payload
+    query += ` ORDER BY recorded_at DESC LIMIT 2000`; // increased limit
 
     const stmt = db.prepare(query);
     const data = stmt.all(...params);
 
     // Parse meta and derive region fallback for datasets without region field
-    const formattedData = data.map((row) => {
-      const meta = row.meta ? JSON.parse(row.meta) : {};
-      const derivedRegion =
-        meta.region ||
-        meta.country ||
-        meta.ocean ||
-        meta.regionName ||
-        meta.subregion ||
-        meta.state ||
-        meta.beachLocation ||
-        null;
+    // Filter out records with null coordinates for map display
+    const formattedData = data
+      .filter(row => row.lat !== null && row.lng !== null)
+      .map((row) => {
+        const meta = row.meta ? JSON.parse(row.meta) : {};
+        const derivedRegion =
+          meta.region ||
+          meta.country ||
+          meta.ocean ||
+          meta.regionName ||
+          meta.subregion ||
+          meta.state ||
+          meta.beachLocation ||
+          meta.stationName ||
+          meta.county ||
+          null;
 
-      return {
-        ...row,
-        meta: {
-          ...meta,
-          region: derivedRegion || 'N/A'
-        }
-      };
-    });
+        return {
+          ...row,
+          meta: {
+            ...meta,
+            region: derivedRegion || 'N/A'
+          }
+        };
+      });
 
     res.json({
       type: 'FeatureCollection',
@@ -130,6 +135,8 @@ export const getMapData = (req, res) => {
           value: point.value,
           unit: point.unit,
           recordedAt: point.recorded_at,
+          source: point.source,
+          meta: point.meta,
           ...point.meta
         }
       }))
