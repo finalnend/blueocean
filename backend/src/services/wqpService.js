@@ -129,19 +129,24 @@ export async function fetchWQPResults({ stateCode, startDate, endDate }) {
 }
 
 /**
- * 產生過去 N 個月的月份區間
+ * 產生過去 N 個月的月份區間（確保 endDate 不超過今天）
  */
 function getMonthRanges(months = 3) {
   const ranges = [];
   const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
   for (let i = 0; i < months; i++) {
-    const endDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 0); // 月底
-    const startDate = new Date(now.getFullYear(), now.getMonth() - i, 1);   // 月初
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+    
+    // 確保 endDate 不超過今天
+    const endDate = monthEnd > today ? today : monthEnd;
+    
     ranges.push({
-      start: startDate.toISOString().slice(0, 10),
+      start: monthStart.toISOString().slice(0, 10),
       end: endDate.toISOString().slice(0, 10),
-      label: `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`
+      label: `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`
     });
   }
   
@@ -199,6 +204,14 @@ export async function importWQPToDatabase() {
         // 每州每月最多 200 筆
         const limitedResults = results.slice(0, 200);
         let monthInserted = 0;
+        let skippedNoCoords = 0;
+        let skippedNoValue = 0;
+
+        // 印出第一筆的欄位名稱（debug 用）
+        if (limitedResults.length > 0) {
+          const firstRow = limitedResults[0];
+          console.log(`[WQP] ${state.name} 欄位名稱: ${Object.keys(firstRow).slice(0, 15).join(', ')}...`);
+        }
 
         const insertMany = db.transaction((rows) => {
           for (const row of rows) {
@@ -206,8 +219,18 @@ export async function importWQPToDatabase() {
             const lng = parseFloat(row.LongitudeMeasure || row['ActivityLocation/LongitudeMeasure']);
             const value = parseFloat(row.ResultMeasureValue || row['ResultMeasure/MeasureValue']);
 
-            if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(value)) {
+            // 允許無座標但有值的資料（用 null 代替）
+            const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+            const hasValue = Number.isFinite(value);
+
+            if (!hasValue) {
+              skippedNoValue++;
               continue;
+            }
+
+            if (!hasCoords) {
+              skippedNoCoords++;
+              // 仍然寫入，但座標設為 null（或用州中心點）
             }
 
             const recordedAt = row.ActivityStartDate || range.end;
@@ -216,13 +239,16 @@ export async function importWQPToDatabase() {
             insertStmt.run(
               'WQP',
               'water_quality',
-              lat, lng, value, unit, recordedAt,
+              hasCoords ? lat : null,
+              hasCoords ? lng : null,
+              value, unit, recordedAt,
               JSON.stringify({
                 region: state.name,
                 characteristicName: row.CharacteristicName,
                 organization: row.OrganizationIdentifier,
                 siteId: row.MonitoringLocationIdentifier,
-                month: range.label
+                month: range.label,
+                hasCoords: hasCoords
               })
             );
             monthInserted++;
@@ -232,7 +258,7 @@ export async function importWQPToDatabase() {
         });
 
         insertMany(limitedResults);
-        console.log(`[WQP] ${state.name} ${range.label}: 寫入 ${monthInserted} 筆`);
+        console.log(`[WQP] ${state.name} ${range.label}: 寫入 ${monthInserted} 筆 (跳過: 無座標=${skippedNoCoords}, 無值=${skippedNoValue})`);
 
         // 避免 rate limit
         await new Promise(resolve => setTimeout(resolve, 2000));

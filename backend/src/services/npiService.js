@@ -6,7 +6,9 @@
 import getDatabase from '../database/db.js';
 import { WFSClient, getFeatureCoordinates } from './wfsClient.js';
 
-const NPI_WFS_BASE = process.env.NPI_WFS_BASE || 'https://data.gov.au/geoserver/npi/ows';
+// 官方確認的 WFS 端點（不是 /ows）
+// 參考: https://data.gov.au/dataset/ds-dga-043f58e0-a188-4458-b61c-04e5c7e7f93c
+const NPI_WFS_BASE = process.env.NPI_WFS_BASE || 'https://data.gov.au/geoserver/npi/wfs';
 
 // NPI 常用圖層（根據實際 GetCapabilities 結果）
 const NPI_LAYERS = {
@@ -161,7 +163,6 @@ export async function importNPIToDatabase() {
 
   let totalInserted = 0;
   const currentYear = new Date().getFullYear();
-  const today = new Date().toISOString().slice(0, 10);
 
   // 嘗試抓取各圖層
   for (const [layerName, typeName] of Object.entries(NPI_LAYERS)) {

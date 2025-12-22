@@ -101,12 +101,48 @@ export async function fetchEchoFacilitiesByQid(qid) {
 const ARCGIS_ECHO_URL = 'https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/EPA_ECHO_Facilities/FeatureServer/0/query';
 
 /**
+ * 延遲函數（用於 exponential backoff）
+ */
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * 帶重試的 axios 請求（exponential backoff）
+ */
+async function axiosWithRetry(config, maxRetries = 3) {
+  let lastError;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await axios(config);
+    } catch (error) {
+      lastError = error;
+      const status = error.response?.status;
+      
+      // 不重試 4xx 錯誤（除了 429 Too Many Requests）
+      if (status && status >= 400 && status < 500 && status !== 429) {
+        throw error;
+      }
+      
+      // exponential backoff: 1s, 2s, 4s
+      const waitTime = Math.pow(2, attempt) * 1000;
+      console.log(`[ECHO] 請求失敗 (attempt ${attempt + 1}/${maxRetries}), ${waitTime}ms 後重試...`);
+      await delay(waitTime);
+    }
+  }
+  throw lastError;
+}
+
+/**
  * 直接查詢設施（使用 Envirofacts API 和 ArcGIS 作為備用）
+ * 加入 retry + exponential backoff
  */
 async function fetchFacilitiesDirect(state) {
-  // 先嘗試 ECHO API（降低 responseset 避免 500 錯誤）
+  // 先嘗試 ECHO API（降低 responseset 避免 500 錯誤）+ retry
   try {
-    const response = await axios.get(`${ECHO_BASE_URL}/cwa_rest_services.get_facilities`, {
+    const response = await axiosWithRetry({
+      method: 'get',
+      url: `${ECHO_BASE_URL}/cwa_rest_services.get_facilities`,
       params: {
         output: 'JSON',
         p_st: state,
@@ -122,7 +158,7 @@ async function fetchFacilitiesDirect(state) {
       return facilities;
     }
   } catch (error) {
-    console.log(`[ECHO] ${state} ECHO API failed: ${error.message}`);
+    console.log(`[ECHO] ${state} ECHO API failed after retries: ${error.message}`);
   }
 
   // 備用方案 1：ArcGIS FeatureServer
@@ -250,8 +286,8 @@ export async function importECHOToDatabase() {
       insertMany(facilities);
       console.log(`[ECHO] ${state}: 匯入 ${facilities.length} 筆設施`);
 
-      // 避免 API rate limit
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // 避免 API rate limit（增加到 2 秒）
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
     } catch (error) {
       console.error(`[ECHO] ${state} 處理失敗:`, error.message);
