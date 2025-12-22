@@ -27,7 +27,17 @@ export class GameObject {
   // Check if this object can eat the other object
   canEat(other) {
     // Must be significantly larger (e.g., 10% larger mass/radius) to eat
-    return this.radius > other.radius * 1.1 && this.collidesWith(other);
+    if (this.radius <= other.radius * 1.1) return false;
+    
+    // Agar.io style: can eat when the larger cell's edge covers the smaller cell's center
+    // This means the distance between centers must be less than the larger cell's radius
+    const dx = this.x - other.x;
+    const dy = this.y - other.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // The larger cell can eat when the smaller cell's center is inside (or close to inside)
+    // Using a small tolerance to make eating feel more responsive
+    return distance < this.radius - other.radius * 0.4;
   }
 
   draw(ctx) {
