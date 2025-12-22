@@ -25,6 +25,9 @@ export default function TrackerPage() {
   const [dataSources, setDataSources] = useState([]);
   const [sourcesLoading, setSourcesLoading] = useState(false);
   
+  // 動態污染類型列表
+  const [pollutionTypes, setPollutionTypes] = useState([]);
+  
   useEffect(() => {
     loadMapData();
     loadTimeSeriesData();
@@ -44,6 +47,24 @@ export default function TrackerPage() {
       }
     };
     loadSources();
+  }, []);
+  
+  // 載入污染類型列表
+  useEffect(() => {
+    const loadPollutionTypes = async () => {
+      try {
+        const result = await getPollutionTypes();
+        setPollutionTypes(result.types || []);
+      } catch (error) {
+        console.error('載入污染類型失敗:', error);
+        // 使用預設類型作為 fallback
+        setPollutionTypes([
+          { type: 'plastic', unit: 'kg/km²' },
+          { type: 'microplastic', unit: 'particles/km²' }
+        ]);
+      }
+    };
+    loadPollutionTypes();
   }, []);
   
   const loadMapData = async () => {
@@ -76,10 +97,38 @@ export default function TrackerPage() {
     }
   };
   
-  const getMarkerColor = (value) => {
-    if (value > 1000) return '#dc2626';
-    if (value > 500) return '#f59e0b';
-    return '#10b981';
+  // 根據污染類型和數值決定標記顏色
+  const getMarkerColor = (value, type) => {
+    // 類型專屬顏色
+    const typeColors = {
+      plastic: { high: '#dc2626', medium: '#f59e0b', low: '#10b981' },
+      microplastic: { high: '#9333ea', medium: '#a855f7', low: '#c4b5fd' },
+      water_quality: { high: '#0369a1', medium: '#0ea5e9', low: '#7dd3fc' },
+      pollution_source: { high: '#b91c1c', medium: '#ef4444', low: '#fca5a5' },
+      chemistry: { high: '#0f766e', medium: '#14b8a6', low: '#5eead4' },
+      contaminant: { high: '#c2410c', medium: '#f97316', low: '#fdba74' },
+      emission: { high: '#4338ca', medium: '#6366f1', low: '#a5b4fc' },
+    };
+    
+    const colors = typeColors[type] || typeColors.plastic;
+    
+    if (value > 1000) return colors.high;
+    if (value > 500) return colors.medium;
+    return colors.low;
+  };
+  
+  // 取得類型的顯示名稱
+  const getTypeLabel = (type) => {
+    const labels = {
+      plastic: t('tracker.types.plastic'),
+      microplastic: t('tracker.types.microplastic'),
+      water_quality: t('tracker.types.waterQuality', '水質監測'),
+      pollution_source: t('tracker.types.pollutionSource', '污染源'),
+      chemistry: t('tracker.types.chemistry', '海洋化學'),
+      contaminant: t('tracker.types.contaminant', '污染物'),
+      emission: t('tracker.types.emission', '排放'),
+    };
+    return labels[type] || type;
   };
   
   // 處理地圖點擊事件
@@ -135,8 +184,18 @@ export default function TrackerPage() {
                 onChange={(e) => setSelectedType(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg"
               >
-                <option value="plastic">{t('tracker.types.plastic')}</option>
-                <option value="microplastic">{t('tracker.types.microplastic')}</option>
+                {pollutionTypes.length > 0 ? (
+                  pollutionTypes.map(({ type }) => (
+                    <option key={type} value={type}>
+                      {getTypeLabel(type)}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="plastic">{t('tracker.types.plastic')}</option>
+                    <option value="microplastic">{t('tracker.types.microplastic')}</option>
+                  </>
+                )}
               </select>
             </div>
             
@@ -225,7 +284,7 @@ export default function TrackerPage() {
                         feature.geometry.coordinates[0]
                       ]}
                       radius={8}
-                      fillColor={getMarkerColor(feature.properties.value)}
+                      fillColor={getMarkerColor(feature.properties.value, selectedType)}
                       color="#fff"
                       weight={2}
                       fillOpacity={0.7}
@@ -234,7 +293,8 @@ export default function TrackerPage() {
                         <div className="text-sm">
                           <strong>{t('tracker.value')}:</strong> {feature.properties.value.toFixed(2)} {feature.properties.unit}<br/>
                           <strong>{t('tracker.region')}:</strong> {feature.properties.region || 'N/A'}<br/>
-                          <strong>{t('tracker.date')}:</strong> {feature.properties.recordedAt}
+                          <strong>{t('tracker.date')}:</strong> {feature.properties.recordedAt}<br/>
+                          <strong>{t('tracker.source', '來源')}:</strong> {feature.properties.source || 'N/A'}
                         </div>
                       </Popup>
                     </CircleMarker>

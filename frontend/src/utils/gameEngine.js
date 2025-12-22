@@ -1002,9 +1002,10 @@ export class GameManager {
       if (this.options.collisionMode === 'bounce') {
         for (const cell of this.playerCells) {
           if (!cell.markedForDeletion && cell.collidesWith(ai)) {
-            // Only bounce if sizes are very similar (within 10% of each other)
+            // Only bounce if sizes are nearly identical (within 3% of each other)
+            // This allows cells with any noticeable size difference to overlap freely
             const sizeRatio = Math.max(cell.radius, ai.radius) / Math.min(cell.radius, ai.radius);
-            if (sizeRatio < 1.1) {
+            if (sizeRatio < 1.03) {
               this.resolveBounce(cell, ai, 0.3);
               cell.x = clamp(cell.x, cell.radius, this.worldWidth - cell.radius);
               cell.y = clamp(cell.y, cell.radius, this.worldHeight - cell.radius);
@@ -1043,9 +1044,9 @@ export class GameManager {
           ai1.markedForDeletion = true;
           ai2.updateMass(ai2.mass + ai1.mass);
         } else if (this.options.collisionMode === 'bounce' && ai1.collidesWith(ai2)) {
-          // Only bounce AI vs AI if they are very similar size
+          // Only bounce AI vs AI if they are nearly identical size
           const sizeRatio = Math.max(ai1.radius, ai2.radius) / Math.min(ai1.radius, ai2.radius);
-          if (sizeRatio < 1.1) {
+          if (sizeRatio < 1.03) {
             this.resolveBounce(ai1, ai2, 0.3);
             if (this.options.aiBoundaryMode === 'clamp') {
               ai1.x = clamp(ai1.x, ai1.radius, this.worldWidth - ai1.radius);
