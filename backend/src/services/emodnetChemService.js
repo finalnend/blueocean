@@ -1,23 +1,21 @@
 /**
  * EMODnet Chemistry Service
  * 歐洲海洋化學/污染監測資料
- * WFS: https://emodnet.ec.europa.eu/geonetwork/
- * ERDDAP: https://erddap.emodnet-chemistry.eu/
+ * ERDDAP: https://erddap.emodnet-chemistry.eu/ 或 https://erddap.emodnet.eu/
  */
 import axios from 'axios';
 import getDatabase from '../database/db.js';
 
-// EMODnet Chemistry ERDDAP 端點
-const ERDDAP_BASE_URL = 'https://erddap.emodnet-chemistry.eu/erddap';
+// EMODnet ERDDAP 端點（多個備用）
+const ERDDAP_ENDPOINTS = [
+  'https://erddap.emodnet-chemistry.eu/erddap',
+  'https://erddap.emodnet.eu/erddap',
+  'https://erddap.emodnet-physics.eu/erddap'
+];
 
-// 預設查詢的資料集（可擴充）
-// 這些是 EMODnet Chemistry 常見的 tabledap 資料集
-const DATASETS = [
-  {
-    id: 'EP_ERD_INT_EUTRO_NRT',
-    name: 'Eutrophication NRT',
-    type: 'nutrient'
-  }
+// 簡化：直接使用 EMODnet Physics 的即時資料（更穩定）
+const PHYSICS_DATASETS = [
+  { id: 'EP_PLATFORMS_METADATA', name: 'Platforms', type: 'chemistry' }
 ];
 
 // 歐洲海域 bbox
@@ -66,78 +64,81 @@ function isRecentlyChecked(meta) {
 }
 
 /**
- * 從 ERDDAP tabledap 取得資料
+ * 從 ERDDAP tabledap 取得資料（嘗試多個端點）
  */
 export async function fetchChemistryFromERDDAP(datasetId, constraints = {}) {
-  // 建構 ERDDAP tabledap URL
-  // 格式: /tabledap/{datasetId}.json?{variables}&{constraints}
-  const variables = 'latitude,longitude,time,value,parameter';
+  const variables = 'latitude,longitude,time';
   
-  let url = `${ERDDAP_BASE_URL}/tabledap/${datasetId}.json?${variables}`;
-  
-  // 加入約束條件
-  if (constraints.minLat && constraints.maxLat) {
-    url += `&latitude>=${constraints.minLat}&latitude<=${constraints.maxLat}`;
-  }
-  if (constraints.minLon && constraints.maxLon) {
-    url += `&longitude>=${constraints.minLon}&longitude<=${constraints.maxLon}`;
-  }
-  if (constraints.startTime) {
-    url += `&time>=${constraints.startTime}`;
-  }
-
-  try {
-    console.log(`[EMODnet] Fetching from ERDDAP: ${datasetId}...`);
-    const response = await axios.get(url, { timeout: 120000 });
+  for (const baseUrl of ERDDAP_ENDPOINTS) {
+    let url = `${baseUrl}/tabledap/${datasetId}.json?${variables}`;
     
-    const table = response.data?.table;
-    if (!table?.rows) return [];
-
-    const columnNames = table.columnNames;
-    return table.rows.map(row => {
-      const record = {};
-      columnNames.forEach((col, idx) => {
-        record[col] = row[idx];
-      });
-      return record;
-    });
-  } catch (error) {
-    // ERDDAP 可能回傳 404 如果資料集不存在或無資料
-    if (error.response?.status === 404) {
-      console.log(`[EMODnet] Dataset ${datasetId}: 無資料或不存在`);
-      return [];
+    if (constraints.minLat && constraints.maxLat) {
+      url += `&latitude>=${constraints.minLat}&latitude<=${constraints.maxLat}`;
     }
-    console.error(`[EMODnet] ERDDAP fetch failed: ${error.message}`);
-    return [];
+    if (constraints.minLon && constraints.maxLon) {
+      url += `&longitude>=${constraints.minLon}&longitude<=${constraints.maxLon}`;
+    }
+
+    try {
+      console.log(`[EMODnet] Trying: ${baseUrl}...`);
+      const response = await axios.get(url, { timeout: 30000 });
+      
+      const table = response.data?.table;
+      if (!table?.rows || table.rows.length === 0) continue;
+
+      const columnNames = table.columnNames;
+      return table.rows.slice(0, 500).map(row => {
+        const record = {};
+        columnNames.forEach((col, idx) => {
+          record[col] = row[idx];
+        });
+        return record;
+      });
+    } catch (error) {
+      console.log(`[EMODnet] ${baseUrl} failed: ${error.message}`);
+      continue;
+    }
   }
+  
+  return [];
 }
 
 /**
  * 從 WFS 取得站點資料（備用方案）
  */
 export async function fetchStationsWFS(bbox) {
-  const wfsUrl = 'https://geo.emodnet-chemistry.eu/geoserver/emodnet/wfs';
+  // 嘗試多個 WFS 端點
+  const wfsEndpoints = [
+    'https://geo.emodnet-chemistry.eu/geoserver/emodnet/wfs',
+    'https://ows.emodnet-humanactivities.eu/wfs'
+  ];
   
-  try {
-    const response = await axios.get(wfsUrl, {
-      params: {
-        service: 'WFS',
-        version: '2.0.0',
-        request: 'GetFeature',
-        typeName: 'emodnet:stations',
-        outputFormat: 'application/json',
-        bbox: bbox,
-        srsName: 'EPSG:4326',
-        count: 1000
-      },
-      timeout: 60000
-    });
+  for (const wfsUrl of wfsEndpoints) {
+    try {
+      const response = await axios.get(wfsUrl, {
+        params: {
+          service: 'WFS',
+          version: '2.0.0',
+          request: 'GetFeature',
+          typeName: 'emodnet:stations',
+          outputFormat: 'application/json',
+          bbox: bbox,
+          srsName: 'EPSG:4326',
+          count: 500
+        },
+        timeout: 30000
+      });
 
-    return response.data?.features || [];
-  } catch (error) {
-    console.error(`[EMODnet] WFS fetch failed: ${error.message}`);
-    return [];
+      if (response.data?.features?.length > 0) {
+        return response.data.features;
+      }
+    } catch (error) {
+      console.log(`[EMODnet] WFS ${wfsUrl} failed: ${error.message}`);
+      continue;
+    }
   }
+  
+  return [];
 }
 
 /**
@@ -146,15 +147,16 @@ export async function fetchStationsWFS(bbox) {
 async function fetchEMODnetData(region) {
   const [minLon, minLat, maxLon, maxLat] = region.bbox.split(',').map(Number);
   
-  // 嘗試 ERDDAP
-  for (const dataset of DATASETS) {
-    const data = await fetchChemistryFromERDDAP(dataset.id, {
-      minLat, maxLat, minLon, maxLon,
-      startTime: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
+  // 嘗試 ERDDAP（使用 allDatasets 列表中的資料集）
+  const commonDatasets = ['EP_PLATFORMS_METADATA', 'allDatasets'];
+  
+  for (const datasetId of commonDatasets) {
+    const data = await fetchChemistryFromERDDAP(datasetId, {
+      minLat, maxLat, minLon, maxLon
     });
     
     if (data.length > 0) {
-      return { source: 'erddap', dataset: dataset.id, type: dataset.type, data };
+      return { source: 'erddap', dataset: datasetId, type: 'chemistry', data };
     }
   }
 

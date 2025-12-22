@@ -8,8 +8,11 @@ import getDatabase from '../database/db.js';
 
 const ECHO_BASE_URL = 'https://echodata.epa.gov/echo';
 
-// 查詢沿海州份的 NPDES 設施
-const COASTAL_STATES = ['CA', 'FL', 'TX', 'NY', 'NJ', 'MA', 'WA', 'OR', 'LA', 'NC', 'SC', 'GA', 'VA', 'MD', 'CT', 'ME'];
+// 使用 Envirofacts API 作為備用
+const ENVIROFACTS_URL = 'https://data.epa.gov/efservice';
+
+// 查詢沿海州份的 NPDES 設施（縮減列表以加快速度）
+const COASTAL_STATES = ['CA', 'FL', 'TX', 'NY', 'MA'];
 
 const CACHE_KEY = 'echo_sync_meta';
 const STALE_WINDOW_HOURS = 24;
@@ -95,9 +98,10 @@ export async function fetchEchoFacilitiesByQid(qid) {
 }
 
 /**
- * 直接查詢設施（簡化版，不用 QID）
+ * 直接查詢設施（使用 Envirofacts API 作為備用）
  */
 async function fetchFacilitiesDirect(state) {
+  // 先嘗試 ECHO API
   try {
     const response = await axios.get(`${ECHO_BASE_URL}/cwa_rest_services.get_facilities`, {
       params: {
@@ -105,16 +109,43 @@ async function fetchFacilitiesDirect(state) {
         p_st: state,
         p_med: 'W',
         p_ptype: 'NPD',
-        responseset: 500 // 每州限制 500 筆
+        responseset: 200
       },
-      timeout: 60000
+      timeout: 30000
     });
 
-    return response.data?.Results?.Facilities || [];
+    const facilities = response.data?.Results?.Facilities;
+    if (facilities && facilities.length > 0) {
+      return facilities;
+    }
   } catch (error) {
-    console.error(`[ECHO] ${state} fetch failed: ${error.message}`);
-    return [];
+    console.error(`[ECHO] ${state} ECHO API failed: ${error.message}`);
   }
+
+  // 備用：使用 Envirofacts NPDES_PERMITS
+  try {
+    console.log(`[ECHO] ${state} 嘗試 Envirofacts API...`);
+    const response = await axios.get(
+      `${ENVIROFACTS_URL}/NPDES_PERMITS/STATE_CODE/${state}/rows/0:100/JSON`,
+      { timeout: 30000 }
+    );
+
+    if (Array.isArray(response.data) && response.data.length > 0) {
+      // 轉換格式
+      return response.data.map(row => ({
+        FacLat: row.LATITUDE83,
+        FacLong: row.LONGITUDE83,
+        FacName: row.FACILITY_NAME,
+        SourceID: row.NPDES_ID,
+        FacCity: row.CITY,
+        FacCounty: row.COUNTY_NAME
+      }));
+    }
+  } catch (error) {
+    console.error(`[ECHO] ${state} Envirofacts failed: ${error.message}`);
+  }
+
+  return [];
 }
 
 /**

@@ -18,12 +18,21 @@ const DEFAULT_CHARACTERISTICS = [
   'pH'
 ];
 
-// 預設近岸區域 bbox（可依需求調整）
+// 預設近岸區域 bbox（格式: 西經,南緯,東經,北緯）
 const COASTAL_REGIONS = {
   us_east_coast: { bBox: '-82,24,-65,45', name: 'US East Coast' },
   us_west_coast: { bBox: '-130,32,-117,49', name: 'US West Coast' },
   gulf_of_mexico: { bBox: '-98,18,-80,31', name: 'Gulf of Mexico' }
 };
+
+// 使用 statecode 替代 bBox（更可靠）
+const COASTAL_STATES = [
+  { code: 'US:06', name: 'California' },
+  { code: 'US:12', name: 'Florida' },
+  { code: 'US:36', name: 'New York' },
+  { code: 'US:48', name: 'Texas' },
+  { code: 'US:25', name: 'Massachusetts' }
+];
 
 const CACHE_KEY = 'wqp_sync_meta';
 const STALE_WINDOW_HOURS = 24;
@@ -85,26 +94,26 @@ function parseWQPCSV(csvText) {
 }
 
 /**
- * 從 WQP 取得水質資料
+ * 從 WQP 取得水質資料（使用 statecode）
  */
-export async function fetchWQPResults({ bBox, startDate, endDate, characteristicName }) {
+export async function fetchWQPResults({ stateCode, startDate, endDate, characteristicType }) {
   const params = {
     mimeType: 'csv',
     zip: 'no',
     sorted: 'no',
-    bBox: bBox,
+    statecode: stateCode,
     startDateLo: startDate,
     startDateHi: endDate,
-    characteristicName: characteristicName || DEFAULT_CHARACTERISTICS.join(';'),
+    characteristicType: characteristicType || 'Nutrient',
     sampleMedia: 'Water',
     dataProfile: 'narrowResult'
   };
 
   try {
-    console.log(`[WQP] Fetching results for bbox: ${bBox}...`);
+    console.log(`[WQP] Fetching results for state: ${stateCode}...`);
     const response = await axios.get(`${WQP_BASE_URL}/Result/search`, {
       params,
-      timeout: 120000, // WQP 可能較慢
+      timeout: 120000,
       responseType: 'text'
     });
 
@@ -146,19 +155,23 @@ export async function importWQPToDatabase() {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  // 逐區域抓取
-  for (const [regionKey, region] of Object.entries(COASTAL_REGIONS)) {
+  // 逐州抓取（使用 statecode 更可靠）
+  for (const state of COASTAL_STATES) {
     try {
       const results = await fetchWQPResults({
-        bBox: region.bBox,
+        stateCode: state.code,
         startDate,
-        endDate
+        endDate,
+        characteristicType: 'Nutrient'
       });
 
       if (!results.length) {
-        console.log(`[WQP] ${regionKey}: 無資料`);
+        console.log(`[WQP] ${state.name}: 無資料`);
         continue;
       }
+
+      // 限制每州最多 500 筆
+      const limitedResults = results.slice(0, 500);
 
       const insertMany = db.transaction((rows) => {
         for (const row of rows) {
@@ -182,25 +195,28 @@ export async function importWQPToDatabase() {
             unit,
             recordedAt,
             JSON.stringify({
-              region: regionKey,
-              regionName: region.name,
+              region: state.name,
+              regionName: state.name,
               characteristicName: row.CharacteristicName,
               sampleMedia: row.ActivityMediaName || 'Water',
               organization: row.OrganizationIdentifier,
               siteId: row.MonitoringLocationIdentifier,
               detectionLimit: row.DetectionQuantitationLimitMeasure_MeasureValue,
-              queryUrl: `${WQP_BASE_URL}/Result/search?bBox=${region.bBox}`
+              queryUrl: `${WQP_BASE_URL}/Result/search?statecode=${state.code}`
             })
           );
           totalInserted++;
         }
       });
 
-      insertMany(results);
-      console.log(`[WQP] ${regionKey}: 匯入 ${results.length} 筆`);
+      insertMany(limitedResults);
+      console.log(`[WQP] ${state.name}: 匯入 ${limitedResults.length} 筆`);
+
+      // 避免 API rate limit
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
     } catch (error) {
-      console.error(`[WQP] ${regionKey} 匯入失敗:`, error.message);
+      console.error(`[WQP] ${state.name} 匯入失敗:`, error.message);
     }
   }
 
